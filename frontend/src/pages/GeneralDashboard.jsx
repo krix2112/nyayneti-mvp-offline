@@ -1,6 +1,25 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 
 function GeneralDashboard() {
+  const navigate = useNavigate();
+  const fileInputRef = useRef(null);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+
+  const handleFileChange = (event) => {
+    const file = event.target.files[0];
+    if (file && file.type === 'application/pdf') {
+      setSelectedFile(file);
+      // In a real app, we might store this in a global state or context
+      // Redirect to analysis page
+      navigate('/analysis');
+    }
+  };
+
+  const triggerFileUpload = () => {
+    fileInputRef.current.click();
+  };
   return (
     <div className="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex font-display">
       {/* Sidebar */}
@@ -13,31 +32,31 @@ function GeneralDashboard() {
             </div>
           </div>
           <nav className="space-y-1">
-            <a className="flex items-center gap-3 px-3 py-2.5 sidebar-active" href="#">
+            <Link className="flex items-center gap-3 px-3 py-2.5 sidebar-active" to="/dashboard">
               <span className="material-symbols-outlined text-[20px]">dashboard</span>
               <span className="text-sm font-medium">Dashboard</span>
-            </a>
-            <a
+            </Link>
+            <Link
               className="flex items-center gap-3 px-3 py-2.5 text-slate-400 hover:text-white transition-colors"
-              href="#"
+              to="/precedents"
             >
               <span className="material-symbols-outlined text-[20px]">search_insights</span>
               <span className="text-sm font-medium">Precedent Explorer</span>
-            </a>
-            <a
+            </Link>
+            <Link
               className="flex items-center gap-3 px-3 py-2.5 text-slate-400 hover:text-white transition-colors"
-              href="#"
+              to="/constitutional"
             >
               <span className="material-symbols-outlined text-[20px]">menu_book</span>
               <span className="text-sm font-medium">Constitutional Library</span>
-            </a>
-            <a
+            </Link>
+            <Link
               className="flex items-center gap-3 px-3 py-2.5 text-slate-400 hover:text-white transition-colors"
-              href="#"
+              to="/research"
             >
               <span className="material-symbols-outlined text-[20px]">bookmarks</span>
               <span className="text-sm font-medium">My Research</span>
-            </a>
+            </Link>
           </nav>
         </div>
         <div className="mt-auto p-4 border-t border-slate-800/50">
@@ -48,14 +67,25 @@ function GeneralDashboard() {
               <span className="text-[11px] text-white font-medium italic">Fully Encrypted</span>
             </div>
           </div>
-          <div className="flex items-center gap-3 px-3 py-4">
-            <div className="w-8 h-8 rounded-full bg-accent-gold/20 flex items-center justify-center border border-accent-gold/30">
-              <span className="text-accent-gold text-xs font-bold">AS</span>
+          <div className="relative">
+            <div
+              className="flex items-center gap-3 px-3 py-4 cursor-pointer hover:bg-slate-800/30 rounded-lg transition-colors"
+              onClick={() => setIsProfileOpen(!isProfileOpen)}
+            >
+              <div className="w-8 h-8 rounded-full bg-accent-gold/20 flex items-center justify-center border border-accent-gold/30">
+                <span className="text-accent-gold text-xs font-bold">G</span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xs font-semibold text-white">Guest</span>
+                <span className="text-[10px] text-slate-500">Chief Justice&apos;s Bench</span>
+              </div>
             </div>
-            <div className="flex flex-col">
-              <span className="text-xs font-semibold text-white">Hon&apos;ble Justice Sharma</span>
-              <span className="text-[10px] text-slate-500">Chief Justice&apos;s Bench</span>
-            </div>
+            {isProfileOpen && (
+              <div className="absolute bottom-full left-0 mb-2 w-48 bg-slate-900 border border-slate-800 rounded-lg shadow-xl py-2 z-50">
+                <button className="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 hover:text-white">Profile</button>
+                <button className="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 hover:text-white border-t border-slate-800">Logout</button>
+              </div>
+            )}
           </div>
         </div>
       </aside>
@@ -72,9 +102,6 @@ function GeneralDashboard() {
               <span className="w-2 h-2 rounded-full bg-emerald-500" />
               Local Engine Active
             </div>
-            <button className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
-              <span className="material-symbols-outlined text-slate-500">notifications</span>
-            </button>
           </div>
         </header>
 
@@ -87,10 +114,14 @@ function GeneralDashboard() {
               </p>
             </div>
             <div className="flex gap-3">
-              <button className="flex items-center gap-2 px-4 py-2 bg-accent-gold text-primary font-bold rounded-lg hover:bg-opacity-90 transition-all text-sm">
-                <span className="material-symbols-outlined text-lg">gavel</span>
-                New Session
-              </button>
+              <Link to="/analysis" className="flex items-center gap-2 px-4 py-2 bg-accent-gold text-primary font-bold rounded-lg hover:bg-opacity-90 transition-all text-sm">
+                <span className="material-symbols-outlined text-lg">analytics</span>
+                Analysis
+              </Link>
+              <Link to="/boundaries" className="flex items-center gap-2 px-4 py-2 border border-accent-gold text-accent-gold font-bold rounded-lg hover:bg-accent-gold hover:text-primary transition-all text-sm">
+                <span className="material-symbols-outlined text-lg">explore</span>
+                Research Boundaries
+              </Link>
             </div>
           </div>
 
@@ -107,7 +138,17 @@ function GeneralDashboard() {
                   </span>
                 </div>
                 <div className="p-8 flex-1">
-                  <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800/20 p-12 text-center flex flex-col items-center justify-center hover:border-accent-gold transition-colors cursor-pointer group dropzone-pattern">
+                  <div
+                    className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800/20 p-12 text-center flex flex-col items-center justify-center hover:border-accent-gold transition-colors cursor-pointer group dropzone-pattern"
+                    onClick={triggerFileUpload}
+                  >
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileChange}
+                      accept=".pdf"
+                      className="hidden"
+                    />
                     <div className="w-16 h-16 bg-white dark:bg-slate-800 rounded-full shadow-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                       <span className="material-symbols-outlined text-accent-gold text-3xl">upload_file</span>
                     </div>
@@ -323,13 +364,7 @@ function GeneralDashboard() {
         </div>
       </main>
 
-      {/* Floating Legal Assistant button */}
-      <div className="fixed bottom-8 right-8">
-        <button className="flex items-center gap-2 bg-primary dark:bg-card-dark text-accent-gold border border-accent-gold/50 px-5 py-4 rounded-full shadow-2xl hover:scale-105 transition-all group">
-          <span className="material-symbols-outlined text-2xl">chat_bubble</span>
-          <span className="font-bold text-sm">Legal Assistant</span>
-        </button>
-      </div>
+      {/* Floating Legal Assistant button removed */}
     </div>
   );
 }

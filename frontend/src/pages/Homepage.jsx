@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 function Homepage() {
   return (
@@ -31,18 +32,9 @@ function Homepage() {
           </div>
         </div>
         <nav className="hidden md:flex items-center gap-10">
-          <a className="text-sm font-medium hover:text-accent-gold transition-colors" href="#">
-            Platform
-          </a>
-          <a className="text-sm font-medium hover:text-accent-gold transition-colors" href="#">
-            Security
-          </a>
-          <a className="text-sm font-medium hover:text-accent-gold transition-colors" href="#">
-            Judiciary
-          </a>
-          <a className="text-sm font-medium hover:text-accent-gold transition-colors" href="#">
-            Documentation
-          </a>
+          <Link className="text-sm font-medium hover:text-accent-gold transition-colors" to="/dashboard">
+            Dashboard
+          </Link>
         </nav>
         <div className="flex items-center gap-4">
           <button className="bg-accent-gold text-primary text-sm font-bold px-5 py-2 rounded-lg hover:bg-white transition-all">
@@ -78,10 +70,10 @@ function Homepage() {
               <span className="material-symbols-outlined">upload_file</span>
               Upload Judgment PDF
             </button>
-            <button className="border border-white/20 bg-white/5 backdrop-blur-md h-14 px-8 rounded-lg font-bold text-lg hover:bg-white/10 transition-all flex items-center justify-center gap-2">
+            <Link to="/dashboard" className="border border-white/20 bg-white/5 backdrop-blur-md h-14 px-8 rounded-lg font-bold text-lg hover:bg-white/10 transition-all flex items-center justify-center gap-2">
               <span className="material-symbols-outlined">account_balance</span>
               See How It Works
-            </button>
+            </Link>
           </div>
         </div>
       </section>

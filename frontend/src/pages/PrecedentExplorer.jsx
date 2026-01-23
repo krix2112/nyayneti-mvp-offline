@@ -1,48 +1,45 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 
 function PrecedentExplorer() {
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   return (
     <div className="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex font-display">
       {/* Side Navigation Bar */}
       <aside className="w-64 border-r border-slate-200 dark:border-slate-800 bg-primary flex flex-col h-screen sticky top-0">
         <div className="p-6">
           <div className="flex items-center gap-3 mb-8">
-            <div className="bg-blue-600 rounded-lg p-1.5">
-              <span className="material-symbols-outlined text-white text-2xl">balance</span>
-            </div>
-            <div>
-              <h1 className="text-white text-lg font-bold leading-none tracking-tight">NyayNeti</h1>
-              <p className="text-blue-400 text-[10px] uppercase tracking-widest mt-1 font-semibold">
-                Intelligence Platform
-              </p>
+            <div className="flex items-baseline">
+              <span className="text-white text-2xl font-bold logo-hindi">न्याय</span>
+              <span className="text-accent-gold text-2xl font-light ml-1">Neti</span>
             </div>
           </div>
           <nav className="space-y-1">
-            <a
+            <Link
               className="flex items-center gap-3 px-3 py-2.5 text-slate-400 hover:text-white transition-colors"
-              href="#"
+              to="/dashboard"
             >
               <span className="material-symbols-outlined text-[20px]">dashboard</span>
               <span className="text-sm font-medium">Dashboard</span>
-            </a>
-            <a className="flex items-center gap-3 px-3 py-2.5 text-white sidebar-active" href="#">
+            </Link>
+            <Link className="flex items-center gap-3 px-3 py-2.5 text-white sidebar-active" to="/precedents">
               <span className="material-symbols-outlined text-[20px]">search_insights</span>
               <span className="text-sm font-medium">Precedent Explorer</span>
-            </a>
-            <a
+            </Link>
+            <Link
               className="flex items-center gap-3 px-3 py-2.5 text-slate-400 hover:text-white transition-colors"
-              href="#"
+              to="/constitutional"
             >
               <span className="material-symbols-outlined text-[20px]">menu_book</span>
               <span className="text-sm font-medium">Constitutional Library</span>
-            </a>
-            <a
+            </Link>
+            <Link
               className="flex items-center gap-3 px-3 py-2.5 text-slate-400 hover:text-white transition-colors"
-              href="#"
+              to="/research"
             >
               <span className="material-symbols-outlined text-[20px]">bookmarks</span>
               <span className="text-sm font-medium">My Research</span>
-            </a>
+            </Link>
           </nav>
           <div className="mt-10">
             <p className="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">
@@ -82,18 +79,25 @@ function PrecedentExplorer() {
               <span className="text-[11px] text-white font-medium">Synced: 20 Oct 2023</span>
             </div>
           </div>
-          <div className="flex items-center gap-3 px-3 py-4 mt-2">
-            <div className="w-8 h-8 rounded-full bg-slate-700 overflow-hidden">
-              <img
-                className="w-full h-full object-cover"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuBy8ZDfG2zcQMAikzUenTEbqEtWpm8JtOaK-PWCFEwrcLbNOj6hYk2fVdSVzF8b8hlAI02ZLMzRi3XMEPhskVTDkh5TfZ1GW-tviPOJxc1tRr3jLIY33BbBIZtA3rMvsYdrer5RXCHUDSHFLUVoETUV1nFucgrCVGLEutp6epkPn7h_vrV8pT-IbOTlOtE5WvAd76dvWR80y8LmuD9mGbnZXp5uIf6Hfqt3WTcDytQJrgywtRBmdW6kuzXd3PQRwOxICinapkKLATYc"
-                alt="Profile picture of a professional legal user"
-              />
+          <div className="relative">
+            <div
+              className="flex items-center gap-3 px-3 py-4 mt-2 cursor-pointer hover:bg-slate-800/30 rounded-lg transition-colors"
+              onClick={() => setIsProfileOpen(!isProfileOpen)}
+            >
+              <div className="w-8 h-8 rounded-full bg-accent-gold/20 flex items-center justify-center border border-accent-gold/30">
+                <span className="text-accent-gold text-xs font-bold">G</span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xs font-semibold text-white">Guest</span>
+                <span className="text-[10px] text-slate-500">Chief Justice&apos;s Bench</span>
+              </div>
             </div>
-            <div className="flex flex-col">
-              <span className="text-xs font-semibold text-white">Hon&apos;ble Justice A. Sharma</span>
-              <span className="text-[10px] text-slate-500">Chief Justice&apos;s Bench</span>
-            </div>
+            {isProfileOpen && (
+              <div className="absolute bottom-full left-0 mb-2 w-48 bg-slate-900 border border-slate-800 rounded-lg shadow-xl py-2 z-50">
+                <button className="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 hover:text-white">Profile</button>
+                <button className="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 hover:text-white border-t border-slate-800">Logout</button>
+              </div>
+            )}
           </div>
         </div>
       </aside>
@@ -114,10 +118,17 @@ function PrecedentExplorer() {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <button className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors relative">
-              <span className="material-symbols-outlined text-slate-500">notifications</span>
-              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-background-dark" />
-            </button>
+            <div className="flex gap-3">
+              <Link to="/analysis" className="flex items-center gap-2 px-3 py-1.5 bg-accent-gold text-primary font-bold rounded-lg hover:bg-opacity-90 transition-all text-xs">
+                <span className="material-symbols-outlined text-sm">analytics</span>
+                Analysis
+              </Link>
+              <Link to="/boundaries" className="flex items-center gap-2 px-3 py-1.5 border border-accent-gold text-accent-gold font-bold rounded-lg hover:bg-accent-gold hover:text-primary transition-all text-xs">
+                <span className="material-symbols-outlined text-sm">explore</span>
+                Boundaries
+              </Link>
+            </div>
+            <div className="h-6 w-px bg-slate-200 dark:bg-slate-800" />
             <button className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
               <span className="material-symbols-outlined text-slate-500">settings</span>
             </button>
@@ -375,9 +386,6 @@ function PrecedentExplorer() {
             <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 whitespace-nowrap font-semibold">
               Print for Court
             </span>
-          </button>
-          <button className="bg-primary hover:bg-blue-900 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-2xl transition-all hover:scale-110">
-            <span className="material-symbols-outlined text-2xl">question_answer</span>
           </button>
         </div>
       </main>

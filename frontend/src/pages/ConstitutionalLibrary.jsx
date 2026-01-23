@@ -1,48 +1,45 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 
 function ConstitutionalLibrary() {
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   return (
     <div className="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex overflow-hidden font-display">
       {/* Sidebar */}
       <aside className="w-64 border-r border-slate-200 dark:border-slate-800 bg-primary flex flex-col h-screen shrink-0">
         <div className="p-6">
           <div className="flex items-center gap-3 mb-8">
-            <div className="flex flex-col">
-              <div className="flex items-baseline gap-1">
-                <span className="text-white text-2xl font-bold font-hindi">न्याय</span>
-                <span className="text-blue-400 text-xl font-bold tracking-tight">Neti</span>
-              </div>
-              <p className="text-slate-500 text-[9px] uppercase tracking-[0.2em] mt-0.5 font-bold">
-                Intelligence Platform
-              </p>
+            <div className="flex items-baseline">
+              <span className="text-white text-2xl font-bold logo-hindi">न्याय</span>
+              <span className="text-accent-gold text-2xl font-light ml-1">Neti</span>
             </div>
           </div>
           <nav className="space-y-1">
-            <a
+            <Link
               className="flex items-center gap-3 px-3 py-2.5 text-slate-400 hover:text-white transition-colors"
-              href="#"
+              to="/dashboard"
             >
               <span className="material-symbols-outlined text-[20px]">dashboard</span>
               <span className="text-sm font-medium">Dashboard</span>
-            </a>
-            <a
+            </Link>
+            <Link
               className="flex items-center gap-3 px-3 py-2.5 text-slate-400 hover:text-white transition-colors"
-              href="#"
+              to="/precedents"
             >
               <span className="material-symbols-outlined text-[20px]">search_insights</span>
               <span className="text-sm font-medium">Precedent Explorer</span>
-            </a>
-            <a className="flex items-center gap-3 px-3 py-2.5 text-white sidebar-active" href="#">
+            </Link>
+            <Link className="flex items-center gap-3 px-3 py-2.5 text-white sidebar-active" to="/constitutional">
               <span className="material-symbols-outlined text-[20px]">menu_book</span>
               <span className="text-sm font-medium">Constitutional Library</span>
-            </a>
-            <a
+            </Link>
+            <Link
               className="flex items-center gap-3 px-3 py-2.5 text-slate-400 hover:text-white transition-colors"
-              href="#"
+              to="/research"
             >
               <span className="material-symbols-outlined text-[20px]">bookmarks</span>
               <span className="text-sm font-medium">My Research</span>
-            </a>
+            </Link>
           </nav>
         </div>
         <div className="mt-auto p-4 border-t border-slate-800/50">
@@ -53,20 +50,25 @@ function ConstitutionalLibrary() {
               <span className="text-[11px] text-white font-medium">Synced: 24 Oct 2023</span>
             </div>
           </div>
-          <div className="flex items-center gap-3 px-3 py-4 mt-2">
-            <div className="w-8 h-8 rounded-full bg-slate-700 overflow-hidden shrink-0">
-              <img
-                alt="Justice A. Sharma"
-                className="w-full h-full object-cover"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuBy8ZDfG2zcQMAikzUenTEbqEtWpm8JtOaK-PWCFEwrcLbNOj6hYk2fVdSVzF8b8hlAI02ZLMzRi3XMEPhskVTDkh5TfZ1GW-tviPOJxc1tRr3jLIY33BbBIZtA3rMvsYdrer5RXCHUDSHFLUVoETUV1nFucgrCVGLEutp6epkPn7h_vrV8pT-IbOTlOtE5WvAd76dvWR80y8LmuD9mGbnZXp5uIf6Hfqt3WTcDytQJrgywtRBmdW6kuzXd3PQRwOxICinapkKLATYc"
-              />
+          <div className="relative">
+            <div
+              className="flex items-center gap-3 px-3 py-4 mt-2 cursor-pointer hover:bg-slate-800/30 rounded-lg transition-colors"
+              onClick={() => setIsProfileOpen(!isProfileOpen)}
+            >
+              <div className="w-8 h-8 rounded-full bg-accent-gold/20 flex items-center justify-center border border-accent-gold/30">
+                <span className="text-accent-gold text-xs font-bold">G</span>
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-xs font-semibold text-white truncate">Guest</span>
+                <span className="text-[10px] text-slate-500 truncate">Supreme Court of India</span>
+              </div>
             </div>
-            <div className="flex flex-col min-w-0">
-              <span className="text-xs font-semibold text-white truncate">
-                Hon&apos;ble Justice A. Sharma
-              </span>
-              <span className="text-[10px] text-slate-500 truncate">Supreme Court of India</span>
-            </div>
+            {isProfileOpen && (
+              <div className="absolute bottom-full left-0 mb-2 w-48 bg-slate-900 border border-slate-800 rounded-lg shadow-xl py-2 z-50">
+                <button className="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 hover:text-white">Profile</button>
+                <button className="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 hover:text-white border-t border-slate-800">Logout</button>
+              </div>
+            )}
           </div>
         </div>
       </aside>
@@ -87,15 +89,19 @@ function ConstitutionalLibrary() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
-              <span className="w-2 h-2 rounded-full bg-green-500" />
-              <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase">
-                Analysis Ready
-              </span>
+            <div className="flex gap-2">
+              <Link to="/analysis" className="flex items-center gap-2 px-3 py-1 bg-accent-gold text-primary font-bold rounded-lg hover:bg-opacity-90 transition-all text-[10px]">
+                <span className="material-symbols-outlined text-sm">analytics</span>
+                Analysis
+              </Link>
+              <Link to="/boundaries" className="flex items-center gap-2 px-3 py-1 border border-accent-gold text-accent-gold font-bold rounded-lg hover:bg-accent-gold hover:text-primary transition-all text-[10px]">
+                <span className="material-symbols-outlined text-sm">explore</span>
+                Boundaries
+              </Link>
             </div>
             <div className="h-4 w-px bg-slate-300 dark:bg-slate-700 mx-2" />
             <button className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
-              <span className="material-symbols-outlined">settings</span>
+              <span className="material-symbols-outlined text-sm">settings</span>
             </button>
           </div>
         </header>

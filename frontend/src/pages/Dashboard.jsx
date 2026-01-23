@@ -4,24 +4,18 @@ function Dashboard() {
   const [activeTab, setActiveTab] = useState('insights');
   const [currentPage, setCurrentPage] = useState(12);
   const [zoomLevel, setZoomLevel] = useState(100);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   return (
     <div className="bg-background-light dark:bg-background-dark text-slate-200 overflow-hidden h-screen flex flex-col">
       {/* Top Navigation Bar */}
       <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-[#2b2f36] bg-primary px-6 py-3 shrink-0">
         <div className="flex items-center gap-8">
-          <div className="flex items-center gap-4 text-white">
-            <div className="size-6 text-blue-400">
-              <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-                <path
-                  clipRule="evenodd"
-                  d="M12.0799 24L4 19.2479L9.95537 8.75216L18.04 13.4961L18.0446 4H29.9554L29.96 13.4961L38.0446 8.75216L44 19.2479L35.92 24L44 28.7521L38.0446 39.2479L29.96 34.5039L29.9554 44H18.0446L18.04 34.5039L9.95537 39.2479L4 28.7521L12.0799 24Z"
-                  fill="currentColor"
-                  fillRule="evenodd"
-                />
-              </svg>
+          <div className="flex items-center gap-3">
+            <div className="flex items-baseline">
+              <span className="text-white text-xl font-bold logo-hindi">न्याय</span>
+              <span className="text-[#c5a059] text-xl font-light ml-1">Neti</span>
             </div>
-            <h2 className="text-white text-xl font-bold leading-tight tracking-tight">NyayNeti</h2>
           </div>
           <div className="flex items-center gap-2 bg-[#1a2332] px-3 py-1.5 rounded-lg border border-[#2b2f36]">
             <span className="material-symbols-outlined text-green-400 text-sm">check_circle</span>
@@ -70,14 +64,25 @@ function Dashboard() {
               <span className="material-symbols-outlined text-[20px]">download_for_offline</span>
             </button>
           </div>
-          <div
-            className="ml-2 bg-center bg-no-repeat aspect-square bg-cover rounded-full size-9 ring-2 ring-blue-500/20"
-            data-alt="User profile avatar"
-            style={{
-              backgroundImage:
-                'url("https://lh3.googleusercontent.com/aida-public/AB6AXuDwH2zYj8l2ZgkB2J5TZZwvLRulGiouYWUbBM2MSkiCkGTw7k2HtxnTrX8kq9vnQzMUO6hnz58BLFRA5NnjcZg2XLlCAomTnK6jCGWYRO_LLNpB6CAlq91uuW-bjANCZzDWDkiOqa90kfj5pBMUo1RvxtvfqaTNlMsNf7SrqnQ2FjXZPDe0xx6kEUKJyZycOiPdTFTV3BuVo02_0ZMFCJamOm23QyWiA4KEYqcQ5rVJnoTKKkPd1F_992n_-XBYpv6QPTekBuzwx6Zs")'
-            }}
-          />
+          <div className="relative">
+            <div
+              className="flex items-center gap-3 cursor-pointer"
+              onClick={() => setIsProfileOpen(!isProfileOpen)}
+            >
+              <div
+                className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-9 ring-2 ring-blue-500/20 bg-slate-700 flex items-center justify-center"
+              >
+                <span className="text-white text-xs font-bold">G</span>
+              </div>
+              <span className="text-sm font-medium text-slate-300">Guest</span>
+            </div>
+            {isProfileOpen && (
+              <div className="absolute top-full right-0 mt-2 w-48 bg-[#1a2332] border border-[#2b2f36] rounded-lg shadow-xl py-2 z-50">
+                <button className="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-[#2b2f36] hover:text-white">Profile</button>
+                <button className="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-[#2b2f36] hover:text-white border-t border-[#2b2f36]">Logout</button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
@@ -87,29 +92,11 @@ function Dashboard() {
           <div className="flex flex-col gap-6">
             <button
               className="text-blue-400 flex items-center justify-center p-2 rounded-xl bg-blue-500/10"
-              title="Dashboard"
+              title="Case Archive"
             >
               <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>
-                dashboard
+                folder
               </span>
-            </button>
-            <button
-              className="text-slate-400 hover:text-white flex items-center justify-center p-2 rounded-xl hover:bg-white/5 transition-all"
-              title="Active Cases"
-            >
-              <span className="material-symbols-outlined">gavel</span>
-            </button>
-            <button
-              className="text-slate-400 hover:text-white flex items-center justify-center p-2 rounded-xl hover:bg-white/5 transition-all"
-              title="Citations"
-            >
-              <span className="material-symbols-outlined">menu_book</span>
-            </button>
-            <button
-              className="text-slate-400 hover:text-white flex items-center justify-center p-2 rounded-xl hover:bg-white/5 transition-all"
-              title="Archives"
-            >
-              <span className="material-symbols-outlined">folder</span>
             </button>
           </div>
           <div className="mt-auto flex flex-col gap-6">
@@ -141,11 +128,11 @@ function Dashboard() {
                 </p>
               </div>
               <div className="flex gap-3">
-                <button className="flex items-center gap-2 px-4 h-9 rounded-lg bg-[#2b2f36] text-white text-xs font-semibold hover:bg-[#3b414d] transition-all border border-[#3f4550]">
+                <button className="flex items-center gap-2 px-4 h-9 rounded-lg bg-[#2b2f36] text-slate-500 text-xs font-semibold cursor-not-allowed border border-[#3f4550]" disabled>
                   <span className="material-symbols-outlined text-sm">share</span>
                   Internal Share
                 </button>
-                <button className="flex items-center gap-2 px-4 h-9 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-500 transition-all shadow-lg shadow-blue-900/20">
+                <button className="flex items-center gap-2 px-4 h-9 rounded-lg bg-blue-600/50 text-slate-300 text-xs font-semibold cursor-not-allowed shadow-lg shadow-blue-900/10" disabled>
                   <span className="material-symbols-outlined text-sm">description</span>
                   Export Report
                 </button>
@@ -247,33 +234,30 @@ function Dashboard() {
                 <div className="flex border-b border-[#2b2f36] px-4">
                   <button
                     onClick={() => setActiveTab('insights')}
-                    className={`flex items-center gap-2 border-b-2 px-4 py-3 text-xs font-bold uppercase tracking-wider ${
-                      activeTab === 'insights'
-                        ? 'border-blue-500 text-blue-400'
-                        : 'border-transparent text-slate-500 hover:text-slate-300'
-                    }`}
+                    className={`flex items-center gap-2 border-b-2 px-4 py-3 text-xs font-bold uppercase tracking-wider ${activeTab === 'insights'
+                      ? 'border-blue-500 text-blue-400'
+                      : 'border-transparent text-slate-500 hover:text-slate-300'
+                      }`}
                   >
                     <span className="material-symbols-outlined text-sm">psychology</span>
                     AI Insights
                   </button>
                   <button
                     onClick={() => setActiveTab('citations')}
-                    className={`flex items-center gap-2 border-b-2 px-4 py-3 text-xs font-bold uppercase tracking-wider ${
-                      activeTab === 'citations'
-                        ? 'border-blue-500 text-blue-400'
-                        : 'border-transparent text-slate-500 hover:text-slate-300'
-                    }`}
+                    className={`flex items-center gap-2 border-b-2 px-4 py-3 text-xs font-bold uppercase tracking-wider ${activeTab === 'citations'
+                      ? 'border-blue-500 text-blue-400'
+                      : 'border-transparent text-slate-500 hover:text-slate-300'
+                      }`}
                   >
                     <span className="material-symbols-outlined text-sm">bookmark</span>
                     Citations
                   </button>
                   <button
                     onClick={() => setActiveTab('history')}
-                    className={`flex items-center gap-2 border-b-2 px-4 py-3 text-xs font-bold uppercase tracking-wider ${
-                      activeTab === 'history'
-                        ? 'border-blue-500 text-blue-400'
-                        : 'border-transparent text-slate-500 hover:text-slate-300'
-                    }`}
+                    className={`flex items-center gap-2 border-b-2 px-4 py-3 text-xs font-bold uppercase tracking-wider ${activeTab === 'history'
+                      ? 'border-blue-500 text-blue-400'
+                      : 'border-transparent text-slate-500 hover:text-slate-300'
+                      }`}
                   >
                     <span className="material-symbols-outlined text-sm">history</span>
                     History

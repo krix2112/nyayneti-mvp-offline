@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 
 function ResearchBoundaries() {
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const handlePrint = () => {
     window.print();
   };
@@ -9,55 +11,56 @@ function ResearchBoundaries() {
     <div className="font-display bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
       <header className="sticky top-0 z-50 w-full border-b border-solid border-slate-200 dark:border-slate-800 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md px-6 md:px-20 py-3">
         <div className="max-w-[1200px] mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3 text-primary dark:text-white">
-            <div className="size-8 text-accent-gold">
-              <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-                <path
-                  clipRule="evenodd"
-                  d="M12.0799 24L4 19.2479L9.95537 8.75216L18.04 13.4961L18.0446 4H29.9554L29.96 13.4961L38.0446 8.75216L44 19.2479L35.92 24L44 28.7521L38.0446 39.2479L29.96 34.5039L29.9554 44H18.0446L18.04 34.5039L9.95537 39.2479L4 28.7521L12.0799 24Z"
-                  fill="currentColor"
-                  fillRule="evenodd"
-                />
-              </svg>
+          <div className="flex items-center gap-3">
+            <div className="flex items-baseline">
+              <span className="text-primary dark:text-white text-xl font-bold logo-hindi">न्याय</span>
+              <span className="text-accent-gold text-xl font-light ml-1">Neti</span>
             </div>
-            <h2 className="text-xl font-bold leading-tight tracking-tight">
-              <span className="font-serif italic text-accent-gold normal-case">न्याय</span>Neti
-            </h2>
           </div>
-          <div className="flex flex-1 justify-end gap-8 no-print">
-            <nav className="hidden lg:flex items-center gap-9">
-              <a
+          <div className="flex flex-1 justify-end gap-6 no-print">
+            <nav className="hidden lg:flex items-center gap-6">
+              <Link
                 className="text-slate-600 dark:text-slate-300 hover:text-accent-gold text-sm font-medium transition-colors"
-                href="#"
+                to="/dashboard"
               >
                 Dashboard
-              </a>
-              <a
+              </Link>
+              <Link
                 className="text-accent-gold text-sm font-bold transition-colors border-b-2 border-accent-gold pb-1"
-                href="#"
+                to="/boundaries"
               >
                 Research Boundaries
-              </a>
-              <a
-                className="text-slate-600 dark:text-slate-300 hover:text-accent-gold text-sm font-medium transition-colors"
-                href="#"
+              </Link>
+              <Link
+                className="flex items-center gap-2 px-3 py-1 bg-accent-gold text-primary font-bold rounded-lg hover:bg-opacity-90 transition-all text-xs"
+                to="/analysis"
               >
-                Library
-              </a>
-              <a
-                className="text-slate-600 dark:text-slate-300 hover:text-accent-gold text-sm font-medium transition-colors"
-                href="#"
-              >
-                Ethics
-              </a>
+                <span className="material-symbols-outlined text-sm">analytics</span>
+                Analysis
+              </Link>
             </nav>
-            <div className="flex gap-2">
-              <button className="flex size-10 cursor-pointer items-center justify-center rounded-lg bg-slate-200 dark:bg-surface-dark text-slate-700 dark:text-white hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors">
+            <div className="flex items-center gap-2">
+              <button className="flex size-10 items-center justify-center rounded-lg bg-slate-200 dark:bg-surface-dark text-slate-700 dark:text-white hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors">
                 <span className="material-symbols-outlined">settings</span>
               </button>
-              <button className="flex size-10 cursor-pointer items-center justify-center rounded-lg bg-slate-200 dark:bg-surface-dark text-slate-700 dark:text-white hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors">
-                <span className="material-symbols-outlined">account_circle</span>
-              </button>
+              <div className="relative">
+                <button
+                  className="flex size-10 items-center justify-center rounded-lg bg-slate-200 dark:bg-surface-dark text-slate-700 dark:text-white hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors"
+                  onClick={() => setIsProfileOpen(!isProfileOpen)}
+                >
+                  <span className="material-symbols-outlined">account_circle</span>
+                </button>
+                {isProfileOpen && (
+                  <div className="absolute top-full right-0 mt-2 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg shadow-xl py-2 z-50">
+                    <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800 mb-1">
+                      <p className="text-xs font-bold text-slate-900 dark:text-white">Guest</p>
+                      <p className="text-[10px] text-slate-500">Chief Justice&apos;s Bench</p>
+                    </div>
+                    <button className="w-full text-left px-4 py-2 text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-colors">Profile</button>
+                    <button className="w-full text-left px-4 py-2 text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-colors">Logout</button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

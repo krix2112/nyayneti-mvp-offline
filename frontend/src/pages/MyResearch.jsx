@@ -1,48 +1,45 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 
 function MyResearch() {
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   return (
     <div className="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex font-display">
       {/* Sidebar */}
       <aside className="w-64 border-r border-slate-200 dark:border-slate-800 bg-sidebar-dark flex flex-col h-screen sticky top-0 shrink-0">
         <div className="p-6">
           <div className="flex items-center gap-3 mb-8">
-            <div className="bg-gold-accent rounded p-1.5 shadow-lg shadow-gold-accent/10">
-              <span className="material-symbols-outlined text-primary text-2xl font-bold">balance</span>
-            </div>
-            <div>
-              <h1 className="text-white text-lg font-bold leading-none tracking-tight">NyayNeti</h1>
-              <p className="text-gold-accent/70 text-[10px] uppercase tracking-widest mt-1 font-semibold">
-                Legal Workspace
-              </p>
+            <div className="flex items-baseline">
+              <span className="text-white text-2xl font-bold logo-hindi">न्याय</span>
+              <span className="text-accent-gold text-2xl font-light ml-1">Neti</span>
             </div>
           </div>
           <nav className="space-y-1">
-            <a
+            <Link
               className="flex items-center gap-3 px-3 py-2.5 text-slate-400 hover:text-white transition-colors"
-              href="#"
+              to="/dashboard"
             >
               <span className="material-symbols-outlined text-[20px]">dashboard</span>
               <span className="text-sm font-medium">Dashboard</span>
-            </a>
-            <a
+            </Link>
+            <Link
               className="flex items-center gap-3 px-3 py-2.5 text-slate-400 hover:text-white transition-colors"
-              href="#"
+              to="/precedents"
             >
               <span className="material-symbols-outlined text-[20px]">search_insights</span>
               <span className="text-sm font-medium">Precedent Explorer</span>
-            </a>
-            <a
+            </Link>
+            <Link
               className="flex items-center gap-3 px-3 py-2.5 text-slate-400 hover:text-white transition-colors"
-              href="#"
+              to="/constitutional"
             >
               <span className="material-symbols-outlined text-[20px]">menu_book</span>
               <span className="text-sm font-medium">Constitutional Library</span>
-            </a>
-            <a className="flex items-center gap-3 px-3 py-2.5 sidebar-active" href="#">
+            </Link>
+            <Link className="flex items-center gap-3 px-3 py-2.5 sidebar-active" to="/research">
               <span className="material-symbols-outlined text-[20px]">bookmarks</span>
               <span className="text-sm font-medium">My Research</span>
-            </a>
+            </Link>
           </nav>
           <div className="mt-10">
             <div className="flex items-center justify-between px-3 mb-3">
@@ -93,14 +90,25 @@ function MyResearch() {
               <span className="text-[11px] text-white font-medium">Fully Offline Ready</span>
             </div>
           </div>
-          <div className="flex items-center gap-3 px-3 py-4 mt-2">
-            <div className="w-8 h-8 rounded bg-gold-accent/20 flex items-center justify-center text-gold-accent font-bold text-xs">
-              AS
+          <div className="relative">
+            <div
+              className="flex items-center gap-3 px-3 py-4 mt-2 cursor-pointer hover:bg-slate-800/30 rounded-lg transition-colors"
+              onClick={() => setIsProfileOpen(!isProfileOpen)}
+            >
+              <div className="w-8 h-8 rounded-full bg-accent-gold/20 flex items-center justify-center border border-accent-gold/30">
+                <span className="text-accent-gold text-xs font-bold">G</span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xs font-semibold text-white">Guest</span>
+                <span className="text-[10px] text-slate-500">My Workspace</span>
+              </div>
             </div>
-            <div className="flex flex-col">
-              <span className="text-xs font-semibold text-white">Hon&apos;ble Justice A. Sharma</span>
-              <span className="text-[10px] text-slate-500">My Workspace</span>
-            </div>
+            {isProfileOpen && (
+              <div className="absolute bottom-full left-0 mb-2 w-48 bg-slate-900 border border-slate-800 rounded-lg shadow-xl py-2 z-50">
+                <button className="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 hover:text-white">Profile</button>
+                <button className="w-full text-left px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 hover:text-white border-t border-slate-800">Logout</button>
+              </div>
+            )}
           </div>
         </div>
       </aside>
@@ -111,11 +119,15 @@ function MyResearch() {
           <div className="flex items-center gap-4">
             <h2 className="text-lg font-bold tracking-tight text-slate-800 dark:text-white">My Research</h2>
             <div className="h-4 w-px bg-slate-300 dark:bg-slate-700" />
-            <div className="flex gap-4">
-              <span className="text-xs font-medium text-slate-500 flex items-center gap-1">
-                <span className="material-symbols-outlined text-sm">cloud_done</span>
-                Local Sync Active
-              </span>
+            <div className="flex gap-2">
+              <Link to="/analysis" className="flex items-center gap-2 px-3 py-1 bg-accent-gold text-primary font-bold rounded-lg hover:bg-opacity-90 transition-all text-[10px]">
+                <span className="material-symbols-outlined text-sm">analytics</span>
+                Analysis
+              </Link>
+              <Link to="/boundaries" className="flex items-center gap-2 px-3 py-1 border border-accent-gold text-accent-gold font-bold rounded-lg hover:bg-accent-gold hover:text-primary transition-all text-[10px]">
+                <span className="material-symbols-outlined text-sm">explore</span>
+                Boundaries
+              </Link>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -390,18 +402,7 @@ function MyResearch() {
           </div>
         </div>
 
-        {/* Floating action buttons */}
-        <div className="fixed bottom-8 right-8 flex flex-col gap-3">
-          <button className="group flex items-center gap-2 bg-gold-accent hover:bg-gold-muted text-primary px-4 py-3 rounded-full shadow-xl transition-all hover:scale-105">
-            <span className="material-symbols-outlined">auto_awesome</span>
-            <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 whitespace-nowrap font-bold">
-              AI Analysis Draft
-            </span>
-          </button>
-          <button className="bg-primary hover:bg-slate-800 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-2xl transition-all border border-slate-700">
-            <span className="material-symbols-outlined text-2xl">question_answer</span>
-          </button>
-        </div>
+        {/* Floating action buttons removed or updated */}
       </main>
     </div>
   );
