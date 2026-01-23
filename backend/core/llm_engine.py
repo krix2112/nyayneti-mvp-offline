@@ -271,25 +271,44 @@ class LLMEngine:
     # --- Public API ---
 
     def answer_question(self, question: str) -> Dict[str, Any]:
-        """Answer a question using RAG."""
-        retrieved = self._semantic_retrieve(question)
-        context = "\n\n---\n\n".join(ch.text for ch in retrieved)
+        """Answer a question using optimized RAG."""
+        # 1. Retrieve more context (up to 8 chunks) for better coverage
+        retrieved = self._semantic_retrieve(question, top_k=8)
+        
+        # 2. Add local keyword boosting if specific terms like dates or names are in question
+        if not retrieved or len(retrieved) < 3:
+            retrieved += self._naive_retrieve(question, top_k=4)
+            # Remove duplicates
+            seen = set()
+            retrieved = [x for x in retrieved if not (x.doc_id + str(x.chunk_id) in seen or seen.add(x.doc_id + str(x.chunk_id)))]
+
+        context = "\n\n---\n\n".join(f"SOURCE: {ch.doc_id}\nCONTENT: {ch.text}" for ch in retrieved)
         
         prompt = f"""<|begin_of_text|><|start_header_id|>system<|end_header_id|>
-        You are NyayNeti, a professional Indian legal AI assistant. 
-        Analyze the provided case excerpts carefully and answer the question with technical precision.
-        Always cite the Document ID. If the context does not contain relevant info, say so clearly.<|eot_id|>
+        You are NyayNeti, a top-tier Indian Legal Intelligence AI. 
+        Your goal is to provide legally sound, fact-based answers using ONLY the provided context from the Digital Archive.
+
+        RULES:
+        1. If the context contains the answer, cite the Document ID (e.g., [SOURCE: case.pdf]).
+        2. If the context is insufficient but mentions related case numbers or sections, highlight those.
+        3. If no relevant info exists in the context, clearly state: "The current local archive does not contain specific details on this query."
+        4. Do NOT hallucinate dates or names not present in the CONTENT blocks below.
+        5. Structure your response with "Analysis" and "Conclusion" for professional clarity.<|eot_id|>
         <|start_header_id|>user<|end_header_id|>
-        CONTEXT FROM DIGITAL ARCHIVE:
-        {context if context else "No relevant documents found in local archive."}
+        DIGITAL ARCHIVE EXCERPTS:
+        -----
+        {context if context else "No relevant documents found. Please index more case files."}
+        -----
 
         LEGAL QUESTION: {question}<|eot_id|>
         <|start_header_id|>assistant<|end_header_id|>"""
         
-        answer = self._call_llm(prompt)
+        answer = self._call_llm(prompt, max_tokens=800)
+        
         return {
             "answer": answer,
             "context_snippets": [{"doc_id": ch.doc_id, "text": ch.text[:500]} for ch in retrieved],
+            "confidence": "high" if retrieved else "low",
             "backend": "local-cpu" if self._llm else ("ollama" if self._check_ollama() else "N/A")
         }
 
