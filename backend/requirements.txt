@@ -1,0 +1,10 @@
+flask==3.0.2
+flask-cors==4.0.1
+pdfminer.six==20231228
+python-dotenv==1.0.1
+pytest==8.3.3
+requests==2.32.3
+
+# Placeholder for RunAnywhere SDK
+runanywhere-sdk==0.0.0
+

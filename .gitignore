@@ -1,0 +1,50 @@
+__pycache__/
+*.py[cod]
+*.pyc
+.Python
+env/
+venv/
+.venv/
+
+# VSCode / IDE
+.vscode/
+.idea/
+*.swp
+
+# Node
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Python
+backend/.env
+backend/*.sqlite3
+backend/.pytest_cache/
+backend/.coverage
+.coverage
+
+# Logs & temp
+logs/
+*.log
+tmp/
+*.tmp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Models & data
+ml/models/*
+!ml/models/.gitkeep
+ml/embeddings/*
+!ml/embeddings/.gitkeep
+backend/demo_data/*
+!backend/demo_data/.gitkeep
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Env
+.env
+*.env.local
+

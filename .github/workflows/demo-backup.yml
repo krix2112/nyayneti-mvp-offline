@@ -1,0 +1,25 @@
+name: Demo Data Backup
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * *" # daily at midnight UTC
+
+jobs:
+  backup-demo-data:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create demo data archive
+        run: |
+          mkdir -p artifacts
+          tar -czf artifacts/demo_data.tar.gz backend/demo_data frontend/public/demo_pdfs
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nyayneti-demo-backup
+          path: artifacts/demo_data.tar.gz
+
