@@ -1,8 +1,38 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { apiClient } from '../api/client';
 
 function PrecedentExplorer() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState(null);
+
+  // Load system status on mount
+  useEffect(() => {
+    apiClient.getStatus().then(setStatus).catch(console.error);
+    // Initial load of documents
+    handleSearch('landmark judgments in India');
+  }, []);
+
+  const handleSearch = async (query) => {
+    const q = query || searchQuery;
+    if (!q) return;
+
+    setLoading(true);
+    try {
+      const data = await apiClient.query(q);
+      if (data.context_snippets) {
+        setResults(data.context_snippets);
+      }
+    } catch (err) {
+      console.error("Search failed:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex font-display">
       {/* Side Navigation Bar */}
@@ -73,10 +103,14 @@ function PrecedentExplorer() {
         </div>
         <div className="mt-auto p-4 border-t border-slate-800/50">
           <div className="flex items-center gap-3 px-3 py-2 bg-slate-800/40 rounded-lg">
-            <span className="material-symbols-outlined text-green-400 text-[18px]">cloud_done</span>
+            <span className={`material-symbols-outlined ${status?.ollama_available ? 'text-green-400' : 'text-amber-400'} text-[18px]`}>
+              {status?.ollama_available ? 'cloud_done' : 'offline_pin'}
+            </span>
             <div className="flex flex-col">
               <span className="text-[10px] text-slate-400 leading-none">Offline Database</span>
-              <span className="text-[11px] text-white font-medium">Synced: 20 Oct 2023</span>
+              <span className="text-[11px] text-white font-medium">
+                {status?.indexed_docs_count || 0} Cases Indexed
+              </span>
             </div>
           </div>
           <div className="relative">
@@ -85,11 +119,11 @@ function PrecedentExplorer() {
               onClick={() => setIsProfileOpen(!isProfileOpen)}
             >
               <div className="w-8 h-8 rounded-full bg-accent-gold/20 flex items-center justify-center border border-accent-gold/30">
-                <span className="text-accent-gold text-xs font-bold">G</span>
+                <span className="text-accent-gold text-xs font-bold">V</span>
               </div>
               <div className="flex flex-col">
-                <span className="text-xs font-semibold text-white">Guest</span>
-                <span className="text-[10px] text-slate-500">Chief Justice&apos;s Bench</span>
+                <span className="text-xs font-semibold text-white">Vansh</span>
+                <span className="text-[10px] text-slate-500">Legal Researcher</span>
               </div>
             </div>
             {isProfileOpen && (
@@ -128,10 +162,6 @@ function PrecedentExplorer() {
                 Boundaries
               </Link>
             </div>
-            <div className="h-6 w-px bg-slate-200 dark:bg-slate-800" />
-            <button className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
-              <span className="material-symbols-outlined text-slate-500">settings</span>
-            </button>
           </div>
         </header>
 
@@ -142,127 +172,85 @@ function PrecedentExplorer() {
               Explore Legal Precedents
             </h1>
             <p className="text-slate-500 dark:text-slate-400 text-sm">
-              Search across 70 years of Indian jurisprudence using natural language queries.
+              Search across your locally indexed Indian jurisprudence.
             </p>
           </div>
 
           {/* Search Bar Component */}
           <div className="relative group mb-6">
             <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-              <span className="material-symbols-outlined text-slate-400 group-focus-within:text-blue-500 transition-colors">
-                search
+              <span className={`material-symbols-outlined ${loading ? 'animate-spin' : ''} text-slate-400 group-focus-within:text-blue-500 transition-colors`}>
+                {loading ? 'sync' : 'search'}
               </span>
             </div>
             <input
               type="text"
               className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl py-4 pl-12 pr-4 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all shadow-sm placeholder:text-slate-500"
-              placeholder="Enter semantic query (e.g., 'Right to privacy in digital surveillance and data collection')"
+              placeholder="Enter semantic query (e.g., 'Principles of bail in non-bailable offences')"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             />
             <div className="absolute inset-y-2 right-2 flex items-center gap-2">
-              <button className="bg-primary hover:bg-blue-900 text-white px-5 rounded-lg h-full text-sm font-semibold transition-all flex items-center gap-2">
-                <span>Analyze</span>
+              <button
+                onClick={() => handleSearch()}
+                disabled={loading}
+                className="bg-primary hover:bg-blue-900 text-white px-5 rounded-lg h-full text-sm font-semibold transition-all flex items-center gap-2 disabled:opacity-50"
+              >
+                <span>{loading ? 'Searching...' : 'Analyze'}</span>
               </button>
             </div>
-          </div>
-
-          {/* Chips / Filters */}
-          <div className="flex flex-wrap gap-2 mb-10">
-            <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-medium hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors">
-              <span>Bench Strength</span>
-              <span className="material-symbols-outlined text-sm">keyboard_arrow_down</span>
-            </button>
-            <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-medium">
-              <span>Year Range</span>
-              <span className="material-symbols-outlined text-sm">calendar_month</span>
-            </button>
-            <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-medium">
-              <span>Subject Matter</span>
-              <span className="material-symbols-outlined text-sm">category</span>
-            </button>
-            <div className="h-8 w-px bg-slate-300 dark:bg-slate-800 mx-1" />
-            <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900/50 text-xs font-bold">
-              <span className="material-symbols-outlined text-sm">grade</span>
-              <span>Landmark Only</span>
-            </button>
           </div>
 
           {/* Results List */}
           <div className="space-y-4">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest">
-                Top Matches (128 Results)
+                {results.length > 0 ? `Matches (${results.length})` : 'Waiting for query...'}
               </h3>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-500">Sort by:</span>
-                <select className="bg-transparent border-none text-xs font-bold text-slate-800 dark:text-slate-200 focus:ring-0 p-0 cursor-pointer">
-                  <option>Relevance</option>
-                  <option>Citation Count</option>
-                  <option>Recency</option>
-                </select>
-              </div>
             </div>
 
-            {/* Case Card 1 */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 hover:border-blue-400 dark:hover:border-blue-500 transition-all shadow-sm">
-              <div className="flex justify-between items-start mb-3">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-[9px] font-black uppercase tracking-widest">
-                      Constitution Bench
-                    </span>
-                    <span className="text-slate-400 text-xs">•</span>
-                    <span className="text-slate-500 text-xs font-medium">Supreme Court of India</span>
+            {results.map((res, idx) => (
+              <div key={idx} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 hover:border-blue-400 dark:hover:border-blue-500 transition-all shadow-sm">
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-[9px] font-black uppercase tracking-widest">
+                        Legal Document
+                      </span>
+                      <span className="text-slate-400 text-xs">•</span>
+                      <span className="text-slate-500 text-xs font-medium">{res.doc_id}</span>
+                    </div>
+                    <h4 className="text-lg font-bold text-slate-900 dark:text-white leading-tight underline decoration-blue-500/30">
+                      {res.doc_id.replace('.PDF', '').replace('.pdf', '').replace(/_/g, ' ')}
+                    </h4>
                   </div>
-                  <h4 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">
-                    Justice K.S. Puttaswamy (Retd.) v. Union of India
-                  </h4>
-                  <p className="text-blue-600 dark:text-blue-400 text-sm font-mono mt-0.5">
-                    2017 (10) SCC 1
+                  <div className="flex gap-2">
+                    <button className="p-2 text-slate-400 hover:text-blue-500 rounded transition-colors">
+                      <span className="material-symbols-outlined text-xl">bookmark</span>
+                    </button>
+                  </div>
+                </div>
+                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3 border-l-4 border-blue-500">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className="material-symbols-outlined text-blue-500 text-sm">auto_awesome</span>
+                    <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 uppercase">
+                      Analysis Insight
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed italic">
+                    {res.text}...
                   </p>
                 </div>
-                <div className="flex gap-2">
-                  <button
-                    className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
-                    title="Save Offline"
-                  >
-                    <span className="material-symbols-outlined text-xl">download_for_offline</span>
-                  </button>
-                  <button
-                    className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
-                    title="Bookmark"
-                  >
-                    <span className="material-symbols-outlined text-xl">bookmark</span>
-                  </button>
-                </div>
               </div>
-              <div className="grid grid-cols-3 gap-4 mb-4 py-3 border-y border-slate-100 dark:border-slate-800/50">
-                <div>
-                  <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">Bench</p>
-                  <p className="text-xs text-slate-700 dark:text-slate-300 font-medium">9-Judge Bench</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">Decision Date</p>
-                  <p className="text-xs text-slate-700 dark:text-slate-300 font-medium">Aug 24, 2017</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">Cited by</p>
-                  <p className="text-xs text-slate-700 dark:text-slate-300 font-medium">4,281 cases</p>
-                </div>
+            ))}
+
+            {results.length === 0 && !loading && (
+              <div className="text-center py-20 opacity-30">
+                <span className="material-symbols-outlined text-6xl mb-4">gavel</span>
+                <p>Start searching to explore precedents</p>
               </div>
-              <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3 border-l-4 border-blue-500">
-                <div className="flex items-center gap-2 mb-1.5">
-                  <span className="material-symbols-outlined text-blue-500 text-sm">auto_awesome</span>
-                  <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 uppercase">
-                    Citation Insight
-                  </span>
-                </div>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed italic">
-                  &quot;The right to privacy is protected as an intrinsic part of the right to life and
-                  personal liberty under Article 21 and as a part of the freedoms guaranteed by Part
-                  III of the Constitution.&quot;
-                </p>
-              </div>
-            </div>
+            )}
 
             {/* Case Card 2 */}
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 hover:border-blue-400 dark:hover:border-blue-500 transition-all shadow-sm opacity-90">
