@@ -26,7 +26,7 @@ function Homepage() {
       {/* Hero Section */}
       <section className="hero-gradient min-h-[85vh] flex items-center justify-center px-6 md:px-20 py-20">
         <div className="max-w-4xl text-center flex flex-col items-center">
-          <img src="/logo.png" alt="NyayNeti Logo" className="h-48 md:h-72 w-auto object-contain mb-8 hover:scale-[1.02] transition-transform duration-500" />
+          <img src="/logo.png" alt="NyayNeti Logo" className="h-96 md:h-[576px] w-auto object-contain mb-8 hover:scale-[1.01] transition-transform duration-500" />
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-accent-gold/30 bg-accent-gold/10 mb-8">
             <span className="relative flex h-2 w-2">
               <span className="absolute inline-flex h-full w-full rounded-full bg-accent-gold opacity-75" />
