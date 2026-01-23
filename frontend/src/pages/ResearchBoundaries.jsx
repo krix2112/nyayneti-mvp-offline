@@ -12,10 +12,9 @@ function ResearchBoundaries() {
       <header className="sticky top-0 z-50 w-full border-b border-solid border-slate-200 dark:border-slate-800 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md px-6 md:px-20 py-3">
         <div className="max-w-[1200px] mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex items-baseline">
-              <span className="text-primary dark:text-white text-xl font-bold logo-hindi">न्याय</span>
-              <span className="text-accent-gold text-xl font-light ml-1">Neti</span>
-            </div>
+            <Link to="/" className="flex items-center">
+              <img src="/logo.png" alt="NyayNeti Logo" className="h-10 w-auto object-contain" />
+            </Link>
           </div>
           <div className="flex flex-1 justify-end gap-6 no-print">
             <nav className="hidden lg:flex items-center gap-6">

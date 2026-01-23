@@ -43,10 +43,9 @@ function GeneralDashboard() {
       <aside className="w-64 border-r border-slate-200 dark:border-slate-800 bg-primary flex flex-col h-screen sticky top-0">
         <div className="p-6">
           <div className="flex items-center gap-3 mb-8">
-            <div className="flex items-baseline">
-              <span className="text-white text-2xl font-bold logo-hindi">न्याय</span>
-              <span className="text-accent-gold text-2xl font-light ml-1">Neti</span>
-            </div>
+            <Link to="/" className="flex items-center">
+              <img src="/logo.png" alt="NyayNeti Logo" className="h-10 w-auto object-contain" />
+            </Link>
           </div>
           <nav className="space-y-1">
             <Link className="flex items-center gap-3 px-3 py-2.5 sidebar-active" to="/dashboard">

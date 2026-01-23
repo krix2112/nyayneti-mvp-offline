@@ -7,29 +7,9 @@ function Homepage() {
       {/* Top Navigation */}
       <header className="sticky top-0 z-50 glass-header px-6 md:px-20 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="relative flex items-center justify-center size-10">
-            <div className="absolute inset-0 border border-accent-gold/40 rounded-full" />
-            {/* Simplified Ashoka Chakra representation */}
-            <svg
-              className="size-6 text-accent-gold"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1"
-              viewBox="0 0 24 24"
-            >
-              <circle cx="12" cy="12" r="10" />
-              <path d="M12 2v20M2 12h20m-3.5-6.5l-13 13m13 0l-13-13" />
-            </svg>
-          </div>
-          <div className="flex flex-col leading-none">
-            <span className="text-xl font-bold tracking-tight">
-              <span className="hindi-font text-accent-gold mr-1">न्याय</span>
-              Neti
-            </span>
-            <span className="text-[10px] uppercase tracking-[0.2em] text-gray-400">
-              Judicial Intelligence
-            </span>
-          </div>
+          <Link to="/" className="flex items-center">
+            <img src="/logo.png" alt="NyayNeti Logo" className="h-12 w-auto object-contain" />
+          </Link>
         </div>
         <nav className="hidden md:flex items-center gap-10">
           <Link className="text-sm font-medium hover:text-accent-gold transition-colors" to="/dashboard">

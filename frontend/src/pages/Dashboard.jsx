@@ -46,10 +46,9 @@ function Dashboard() {
       <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-[#2b2f36] bg-primary px-6 py-3 shrink-0">
         <div className="flex items-center gap-8">
           <div className="flex items-center gap-3">
-            <div className="flex items-baseline">
-              <span className="text-white text-xl font-bold logo-hindi">न्याय</span>
-              <span className="text-[#c5a059] text-xl font-light ml-1">Neti</span>
-            </div>
+            <Link to="/" className="flex items-center">
+              <img src="/logo.png" alt="NyayNeti Logo" className="h-10 w-auto object-contain" />
+            </Link>
           </div>
           <div className="flex items-center gap-2 bg-[#1a2332] px-3 py-1.5 rounded-lg border border-[#2b2f36]">
             <span className={`material-symbols-outlined ${status?.ollama_available ? 'text-green-400' : 'text-amber-400'} text-sm`}>
