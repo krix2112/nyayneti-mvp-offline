@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
 
 function Dashboard() {
@@ -78,12 +79,12 @@ function Dashboard() {
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-6 mr-4 border-r border-[#2b2f36] pr-6">
-            <a className="text-slate-400 hover:text-white text-sm font-medium transition-colors" href="#">
+            <Link className="text-slate-400 hover:text-white text-sm font-medium transition-colors" to="/constitutional">
               Library
-            </a>
-            <a className="text-slate-400 hover:text-white text-sm font-medium transition-colors" href="#">
+            </Link>
+            <Link className="text-slate-400 hover:text-white text-sm font-medium transition-colors" to="/research">
               Research Logs
-            </a>
+            </Link>
           </div>
           <div className="flex gap-2">
             <button
@@ -161,8 +162,8 @@ function Dashboard() {
                 {chatHistory.map((msg, i) => (
                   <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
                     <div className={`max-w-[85%] rounded-2xl p-4 text-sm ${msg.role === 'user' ? 'bg-blue-600/20 text-blue-100 rounded-tr-none border border-blue-500/30' :
-                        msg.role === 'error' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
-                          'bg-[#1a2332] text-slate-200 rounded-tl-none border border-[#2b2f36]'
+                      msg.role === 'error' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
+                        'bg-[#1a2332] text-slate-200 rounded-tl-none border border-[#2b2f36]'
                       }`}>
                       <p className="leading-relaxed">{msg.content}</p>
 
