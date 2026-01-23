@@ -1,10 +1,24 @@
+# Web Framework
 flask==3.0.2
 flask-cors==4.0.1
+
+# PDF Processing
 pdfminer.six==20231228
+
+# Environment Management
 python-dotenv==1.0.1
+
+# LLM Inference (offline)
+llama-cpp-python==0.2.90
+
+# Semantic Search / Embeddings
+sentence-transformers==2.7.0
+numpy>=1.24.0
+
+# Testing
 pytest==8.3.3
 requests==2.32.3
 
-# Placeholder for RunAnywhere SDK
-runanywhere-sdk==0.0.0
+# Model Download
+huggingface_hub>=0.20.0
 
