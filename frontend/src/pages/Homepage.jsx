@@ -8,7 +8,7 @@ function Homepage() {
       <header className="sticky top-0 z-50 glass-header px-6 md:px-20 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Link to="/" className="flex items-center">
-            <img src="/logo.png" alt="NyayNeti Logo" className="h-16 md:h-20 w-auto object-contain" />
+            <img src="/logo.png" alt="NyayNeti Logo" className="h-12 w-auto object-contain" />
           </Link>
         </div>
         <nav className="hidden md:flex items-center gap-10">
