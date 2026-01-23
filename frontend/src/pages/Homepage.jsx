@@ -8,7 +8,7 @@ function Homepage() {
       <header className="sticky top-0 z-50 glass-header px-6 md:px-20 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Link to="/" className="flex items-center">
-            <img src="/logo.png" alt="NyayNeti Logo" className="h-12 w-auto object-contain" />
+            <img src="/logo.png" alt="NyayNeti Logo" className="h-16 md:h-20 w-auto object-contain" />
           </Link>
         </div>
         <nav className="hidden md:flex items-center gap-10">
@@ -26,6 +26,7 @@ function Homepage() {
       {/* Hero Section */}
       <section className="hero-gradient min-h-[85vh] flex items-center justify-center px-6 md:px-20 py-20">
         <div className="max-w-4xl text-center flex flex-col items-center">
+          <img src="/logo.png" alt="NyayNeti Logo" className="h-32 md:h-48 w-auto object-contain mb-8 hover:scale-105 transition-transform duration-500" />
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-accent-gold/30 bg-accent-gold/10 mb-8">
             <span className="relative flex h-2 w-2">
               <span className="absolute inline-flex h-full w-full rounded-full bg-accent-gold opacity-75" />
