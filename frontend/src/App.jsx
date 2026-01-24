@@ -8,7 +8,7 @@ import GeneralDashboard from './pages/GeneralDashboard';
 import MyResearch from './pages/MyResearch';
 import ResearchBoundaries from './pages/ResearchBoundaries';
 import StatusBar from './components/StatusBar';
-import { useKeyboardShortcuts, ShortcutsHint } from './hooks/useKeyboardShortcuts';
+import { useKeyboardShortcuts, ShortcutsHint } from './hooks/useKeyboardShortcuts.jsx';
 
 function AppContent() {
   // Enable global keyboard shortcuts

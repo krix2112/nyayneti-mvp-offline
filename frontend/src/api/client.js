@@ -138,5 +138,60 @@ export const apiClient = {
         } catch (error) {
             handleAPIError(error, 'Summarize');
         }
+    },
+
+    /**
+     * Answer a legal question using RAG with streaming
+     */
+    async streamQuery(question, onToken, onMetadata) {
+        const res = await fetch(`${API_BASE_URL}/api/query/stream`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ question }),
+        });
+
+        if (!res.ok) {
+            const errorData = await res.json().catch(() => ({}));
+            throw new Error(errorData.error || `Server returned ${res.status}`);
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let metadataProcessed = false;
+        let buffer = "";
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+
+            if (!metadataProcessed) {
+                const boundary = buffer.indexOf("\n\n");
+                if (boundary !== -1) {
+                    const metadataPart = buffer.substring(0, boundary);
+                    const remaining = buffer.substring(boundary + 2);
+
+                    if (metadataPart.startsWith("DATA: ")) {
+                        try {
+                            const jsonStr = metadataPart.replace("DATA: ", "");
+                            const metadata = JSON.parse(jsonStr);
+                            if (onMetadata) onMetadata(metadata);
+                        } catch (e) {
+                            console.error("Failed to parse metadata", e);
+                        }
+                    }
+                    metadataProcessed = true;
+                    buffer = remaining;
+                    if (buffer) {
+                        onToken(buffer);
+                        buffer = "";
+                    }
+                }
+            } else {
+                onToken(buffer);
+                buffer = "";
+            }
+        }
     }
 };
