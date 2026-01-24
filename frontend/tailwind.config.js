@@ -9,6 +9,12 @@ export default {
         'accent-gold': '#b89552',
         'gold-accent': '#c5a059',
         'gold-muted': '#8e7341',
+        'gold': '#b89552',
+        'navy': {
+          700: '#1a2942',
+          800: '#0f1d33',
+          900: '#0a1629',
+        },
         'background-light': '#f6f7f8',
         'background-dark': '#0a1629',
         'card-dark': '#131b2b',
