@@ -48,3 +48,4 @@ backend/uploads/*
 .env
 *.env.local
 
+nul

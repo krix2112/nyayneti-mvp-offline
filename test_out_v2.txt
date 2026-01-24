@@ -1,0 +1,21 @@
+Running test query...
+DEBUG: Starting answer_question for: What articles of constitution are cited?
+sentence-transformers not installed. Using naive retrieval.
+DEBUG: answer_question returning types:
+  answer: <class 'str'>
+  context_snippets: <class 'list'>
+    List Item 0 type: <class 'dict'>
+  confidence: <class 'str'>
+  engine: <class 'str'>
+  stats: <class 'dict'>
+Success! Got response.
+Response keys: dict_keys(['answer', 'context_snippets', 'confidence', 'engine', 'stats'])
+  answer: <class 'str'>
+  context_snippets: <class 'list'>
+    First item of context_snippets is type: <class 'dict'>
+      doc_id: <class 'str'>
+      text: <class 'str'>
+  confidence: <class 'str'>
+  engine: <class 'str'>
+  stats: <class 'dict'>
+JSON Serialization success!

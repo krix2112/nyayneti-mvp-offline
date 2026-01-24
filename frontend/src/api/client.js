@@ -144,7 +144,14 @@ export const apiClient = {
      * Answer a legal question using RAG with streaming
      */
     async streamQuery(question, onToken, onMetadata) {
+<<<<<<< Updated upstream
         const res = await fetch(`${API_BASE_URL}/api/query/stream`, {
+=======
+        const url = `${API_BASE_URL}/query/stream`;
+        console.log("🌊 NyayNeti: Initiating stream request to:", url);
+
+        const res = await fetch(url, {
+>>>>>>> Stashed changes
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ question }),

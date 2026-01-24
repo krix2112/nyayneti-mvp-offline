@@ -1,0 +1,34 @@
+Traceback (most recent call last):
+  File "C:\Users\Vansh Bhatia\nayaneti\nyayneti-mvp\test_engine_direct.py", line 41, in <module>
+    json_dumps_res = json.dumps(res)
+  File "C:\Users\Vansh Bhatia\AppData\Local\Programs\Python\Python313\Lib\json\__init__.py", line 231, in dumps
+    return _default_encoder.encode(obj)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^
+  File "C:\Users\Vansh Bhatia\AppData\Local\Programs\Python\Python313\Lib\json\encoder.py", line 200, in encode
+    chunks = self.iterencode(o, _one_shot=True)
+  File "C:\Users\Vansh Bhatia\AppData\Local\Programs\Python\Python313\Lib\json\encoder.py", line 261, in iterencode
+    return _iterencode(o, 0)
+  File "C:\Users\Vansh Bhatia\AppData\Local\Programs\Python\Python313\Lib\json\encoder.py", line 180, in default
+    raise TypeError(f'Object of type {o.__class__.__name__} '
+                    f'is not JSON serializable')
+TypeError: Object of type generator is not JSON serializable
+Running test query...
+DEBUG: Starting answer_question for: What articles of constitution are cited?
+sentence-transformers not installed. Using naive retrieval.
+DEBUG: answer_question returning types:
+  answer: <class 'generator'>
+  context_snippets: <class 'list'>
+    List Item 0 type: <class 'dict'>
+  confidence: <class 'str'>
+  engine: <class 'str'>
+  stats: <class 'dict'>
+Success! Got response.
+Response keys: dict_keys(['answer', 'context_snippets', 'confidence', 'engine', 'stats'])
+  answer: <class 'generator'>
+  context_snippets: <class 'list'>
+    First item of context_snippets is type: <class 'dict'>
+      doc_id: <class 'str'>
+      text: <class 'str'>
+  confidence: <class 'str'>
+  engine: <class 'str'>
+  stats: <class 'dict'>
