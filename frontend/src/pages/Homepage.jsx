@@ -40,9 +40,9 @@ export default function Homepage() {
       />
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden py-20 min-h-screen flex items-center justify-center">
+      <section className="relative overflow-hidden py-20 min-h-screen flex items-center justify-center hero-gradient">
         {/* Animated background */}
-        <div className="absolute inset-0 opacity-10">
+        <div className="absolute inset-0 opacity-20">
           <div className="absolute top-20 left-10 w-72 h-72 bg-gold blur-3xl animate-pulse"></div>
           <div className="absolute bottom-20 right-10 w-96 h-96 bg-blue-500 blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
         </div>
@@ -61,7 +61,7 @@ export default function Homepage() {
               transition={{ delay: 0.2, type: "spring" }}
               className="inline-block mb-8"
             >
-              <img src="/logo.png" alt="NyayNeti Logo" className="h-48 md:h-64 mx-auto object-contain" />
+              <img src="/logo.png" alt="NyayNeti Logo" className="h-64 md:h-[420px] mx-auto object-contain" />
             </motion.div>
 
             {/* Title */}
