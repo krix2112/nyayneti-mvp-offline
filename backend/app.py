@@ -39,7 +39,6 @@ def create_app() -> Flask:
     settings = get_settings()
     ensure_dirs()
 
-    # Initialize LLM engine with full configuration
     llm_engine = LLMEngine(
         model_name=settings.LLM_MODEL_NAME,
         api_key=settings.RUNANYWHERE_API_KEY,
@@ -50,6 +49,12 @@ def create_app() -> Flask:
         n_threads=settings.LLM_THREADS,
         embedding_model=settings.EMBEDDING_MODEL,
         demo_mode=settings.DEMO_MODE,
+    )
+
+    from core.matcher import CaseMatcher
+    matcher = CaseMatcher(
+        corpus_path=os.path.join(settings.DEMO_DATA_DIR, "sample_corpus.json"),
+        llm_engine=llm_engine
     )
 
     # --- Health & Status Endpoints ---
@@ -176,6 +181,75 @@ def create_app() -> Flask:
             "citations": citations,
             "count": len(citations),
         }), 200
+
+    # --- Matcher Endpoints ---
+
+    @app.route("/api/match", methods=["POST"])
+    def match_cases():
+        """Find similar cases for a given document."""
+        payload = request.get_json(force=True, silent=True) or {}
+        doc_id = payload.get("doc_id", "").strip()
+
+        if not doc_id:
+            return jsonify({"error": "doc_id is required"}), 400
+
+        # 1. Get Text for the document
+        chunks = [ch for ch in llm_engine._load_index() if ch.doc_id == doc_id]
+        if not chunks:
+            # Fallback: check raw file text
+            upload_path = os.path.join(settings.UPLOAD_DIR, doc_id)
+            if os.path.exists(upload_path):
+                 try:
+                     text = extract_text_from_pdf(upload_path)
+                 except: text = ""
+            else:
+                return jsonify({"error": "Document found locally but text missing"}), 404
+        else:
+            text = "\n".join(ch.text for ch in chunks)
+
+        if not text:
+             return jsonify({"error": "Could not extract text from document"}), 500
+
+        # 2. Extract Metadata
+        metadata = matcher.extract_metadata_from_text(text)
+
+        # 3. Find Matches
+        matches = matcher.match_cases(text, metadata)
+
+        return jsonify({
+            "source_doc_id": doc_id,
+            "extracted_metadata": metadata,
+            "matches": matches
+        }), 200
+
+    @app.route("/api/pdf/<path:doc_id>", methods=["GET"])
+    def serve_pdf(doc_id):
+        """Serve a PDF document (Original or from Corpus)."""
+        from flask import send_from_directory
+        
+        # 1. Check Uploads
+        if os.path.exists(os.path.join(settings.UPLOAD_DIR, doc_id)):
+            return send_from_directory(settings.UPLOAD_DIR, doc_id)
+        
+        # 2. Check Demo Data (Past Judgments)
+        # Check if it's one of our sample cases [case_001, etc]
+        # Map case_00x to a real PDF in demo_data for Visualization
+        real_files = [
+            f for f in os.listdir(settings.DEMO_DATA_DIR) 
+            if f.lower().endswith('.pdf')
+        ]
+        
+        if doc_id.startswith("case_") and real_files:
+            # Deterministic mapping based on hashing the ID
+            idx = int(hash(doc_id)) % len(real_files)
+            mapped_file = real_files[idx]
+            return send_from_directory(settings.DEMO_DATA_DIR, mapped_file)
+
+        # 3. Direct check in Demo Data
+        if os.path.exists(os.path.join(settings.DEMO_DATA_DIR, doc_id)):
+            return send_from_directory(settings.DEMO_DATA_DIR, doc_id)
+
+        return jsonify({"error": "PDF not found"}), 404
 
     return app
 

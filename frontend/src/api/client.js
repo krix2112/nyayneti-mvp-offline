@@ -141,17 +141,27 @@ export const apiClient = {
     },
 
     /**
+     * Match a document against the case corpus
+     */
+    async matchCases(docId) {
+        try {
+            const res = await fetchWithTimeout(`${API_BASE_URL}/api/match`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ doc_id: docId }),
+            }, 60000);
+
+            return await res.json();
+        } catch (error) {
+            handleAPIError(error, 'Match cases');
+        }
+    },
+
+    /**
      * Answer a legal question using RAG with streaming
      */
     async streamQuery(question, onToken, onMetadata) {
-<<<<<<< Updated upstream
         const res = await fetch(`${API_BASE_URL}/api/query/stream`, {
-=======
-        const url = `${API_BASE_URL}/query/stream`;
-        console.log("🌊 NyayNeti: Initiating stream request to:", url);
-
-        const res = await fetch(url, {
->>>>>>> Stashed changes
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ question }),
@@ -161,6 +171,7 @@ export const apiClient = {
             const errorData = await res.json().catch(() => ({}));
             throw new Error(errorData.error || `Server returned ${res.status}`);
         }
+
 
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
