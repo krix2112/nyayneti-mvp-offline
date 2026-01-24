@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { apiClient } from '../api/client';
 
@@ -38,6 +38,29 @@ export default function Homepage() {
         onChange={handleFileSelect}
         className="hidden"
       />
+
+      {/* Top Navigation */}
+      <header className="sticky top-0 z-50 glass-header px-6 md:px-20 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Link to="/" className="flex items-center">
+            <img src="/logo.png" alt="NyayNeti Logo" className="h-12 w-auto object-contain" />
+          </Link>
+        </div>
+        <nav className="hidden md:flex items-center gap-10">
+          <Link className="text-sm font-medium hover:text-accent-gold transition-colors" to="/dashboard">
+            Dashboard
+          </Link>
+        </nav>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={handleUploadClick}
+            disabled={uploading}
+            className="bg-accent-gold text-primary text-sm font-bold px-5 py-2 rounded-lg hover:bg-white transition-all disabled:opacity-50"
+          >
+            {uploading ? 'Uploading...' : 'Upload PDF'}
+          </button>
+        </div>
+      </header>
 
       {/* Hero Section */}
       <section className="relative overflow-hidden py-20 min-h-screen flex items-center justify-center hero-gradient">
