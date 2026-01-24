@@ -1,7 +1,10 @@
 import os
+import json
+import numpy as np
 
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request
+from flask.json.provider import DefaultJSONProvider
 from flask_cors import CORS
 
 from config import get_settings
@@ -11,12 +14,26 @@ from core.llm_engine import LLMEngine
 from utils import allowed_file, ensure_dirs
 
 
+class NyayNetiJSONProvider(DefaultJSONProvider):
+    def default(self, obj):
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
+        if isinstance(obj, (np.bool_, bool)):
+            return bool(obj)
+        return super().default(obj)
+
+
 # Load environment variables
 load_dotenv()
 
 
 def create_app() -> Flask:
     app = Flask(__name__)
+    app.json = NyayNetiJSONProvider(app)
     CORS(app)
 
     settings = get_settings()
@@ -120,8 +137,14 @@ def create_app() -> Flask:
         if not question:
             return jsonify({"error": "Question is required"}), 400
 
-        response = llm_engine.answer_question(question)
-        return jsonify(response), 200
+        try:
+            response = llm_engine.answer_question(question)
+            return jsonify(response), 200
+        except Exception as e:
+            import traceback
+            print("ERROR in /api/query:")
+            traceback.print_exc()
+            return jsonify({"error": str(e)}), 500
 
     @app.route("/api/summary", methods=["POST"])
     def summarize():

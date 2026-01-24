@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import pickle
+import math
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -17,6 +18,7 @@ except ImportError:
     LLAMA_CPP_AVAILABLE = False
 
 from .pdf_processor import split_text_into_chunks
+from .json_utils import sanitize_for_json
 
 
 # Ollama API configuration (as fallback)
@@ -91,10 +93,11 @@ class LLMEngine:
 
     # --- LLM Inferencing ---
 
-    def _call_llm(self, prompt: str, max_tokens: int = 512) -> str:
+    def _call_llm(self, prompt: str, max_tokens: int = 512, stream: bool = False):
         """Call the available LLM (Local GGUF -> Ollama -> Error)."""
         if self.demo_mode:
-            return "NyayNeti Demo: AI is in safe-preview mode. Disable DEMO_MODE to use local intelligence."
+            msg = "NyayNeti Demo: AI is in safe-preview mode. Disable DEMO_MODE to use local intelligence."
+            return [msg] if stream else msg
 
         # 1. Try local llama-cpp-python
         if self._llm:
@@ -103,18 +106,27 @@ class LLMEngine:
                     prompt,
                     max_tokens=max_tokens,
                     stop=["<|eot_id|>", "<|end_of_text|>", "Question:", "User:"],
-                    echo=False
+                    echo=False,
+                    stream=stream
                 )
+                if stream:
+                    def gen():
+                        for chunk in output:
+                            yield chunk["choices"][0]["text"]
+                    return gen()
                 return output["choices"][0]["text"].strip()
             except Exception as e:
                 print(f"Local LLM inference failed: {e}")
 
         # 2. Try Ollama fallback
         if self._check_ollama():
+            if stream:
+                return self._call_ollama_stream(prompt, max_tokens)
             return self._call_ollama(prompt, max_tokens)
 
         # 3. Fail gracefully
-        return "ERROR: Connectivity issue. The local Legal Intelligence Engine (Ollama) is not reachable. Please start Ollama or check your model configuration."
+        err = "ERROR: Connectivity issue. The local Legal Intelligence Engine (Ollama) is not reachable."
+        return (s for s in [err]) if stream else err
 
     def _check_ollama(self) -> bool:
         """Check if Ollama is running."""
@@ -131,11 +143,17 @@ class LLMEngine:
     def _call_ollama(self, prompt: str, max_tokens: int) -> str:
         """Call Ollama API with model fallback."""
         try:
-            # First attempt with configured model
+            # Dynamically select the best available model
+            model = self.ollama_model
+            if self._check_model_exists("deepseek-r1:1.5b"):
+                model = "deepseek-r1:1.5b"
+            elif self._check_model_exists("llama3.2:3b"):
+                model = "llama3.2:3b"
+            
             resp = requests.post(
                 f"{self.ollama_base_url}/api/generate",
                 json={
-                    "model": self.ollama_model,
+                    "model": model,
                     "prompt": prompt,
                     "stream": False,
                     "options": {"num_predict": max_tokens}
@@ -144,29 +162,56 @@ class LLMEngine:
             )
             if resp.status_code == 200:
                 return resp.json().get("response", "").strip()
-            
-            # If model not found, try to use the first available model
-            tags_resp = requests.get(f"{self.ollama_base_url}/api/tags")
-            if tags_resp.status_code == 200:
-                models = tags_resp.json().get("models", [])
-                if models:
-                    fallback_model = models[0]["name"]
-                    print(f"Ollama model {self.ollama_model} failed, falling back to {fallback_model}...")
-                    resp = requests.post(
-                        f"{self.ollama_base_url}/api/generate",
-                        json={
-                            "model": fallback_model,
-                            "prompt": prompt,
-                            "stream": False,
-                        },
-                        timeout=120
-                    )
-                    if resp.status_code == 200:
-                        return resp.json().get("response", "").strip()
         except Exception as e:
             print(f"Ollama call failed: {e}")
-        
-        return "CONNECTION ERROR: Ollama server is running but failed to generate a response. Please check if the model is pulled."
+        return "CONNECTION ERROR: Ollama failed."
+
+    def _call_ollama_stream(self, prompt: str, max_tokens: int):
+        """Generator for Ollama streaming with DeepSeek reasoning filtering."""
+        try:
+            # Dynamically select the best available model
+            model = self.ollama_model
+            if self._check_model_exists("deepseek-r1:1.5b"):
+                model = "deepseek-r1:1.5b"
+            elif self._check_model_exists("llama3.2:3b"):
+                model = "llama3.2:3b"
+            
+            resp = requests.post(
+                f"{self.ollama_base_url}/api/generate",
+                json={"model": model, "prompt": prompt, "stream": True, "options": {"num_predict": max_tokens}},
+                stream=True,
+                timeout=120
+            )
+            
+            in_thought_block = False
+            for line in resp.iter_lines():
+                if line:
+                    data = json.loads(line)
+                    token = data.get("response", "")
+                    
+                    # Filter out DeepSeek reasoning tokens for a cleaner legal UI
+                    if "<think>" in token:
+                        in_thought_block = True
+                        continue
+                    if "</think>" in token:
+                        in_thought_block = False
+                        continue
+                    
+                    if not in_thought_block:
+                        yield token
+                    
+                    if data.get("done"): break
+        except Exception as e:
+            yield f" [Stream Error: {e}] "
+
+    def _check_model_exists(self, model_name: str) -> bool:
+        try:
+            resp = requests.get(f"{self.ollama_base_url}/api/tags")
+            if resp.status_code == 200:
+                models = [m["name"] for m in resp.json().get("models", [])]
+                return any(model_name in m for m in models)
+        except: pass
+        return False
 
     # --- Embeddings & Retrieval ---
 
@@ -240,92 +285,120 @@ class LLMEngine:
         self._chunks_cache = chunks
         return chunks
 
-    def _semantic_retrieve(self, question: str, top_k: int = 4) -> List[DocumentChunk]:
-        """Retrieve relevant chunks using cosine similarity."""
+    def _hybrid_retrieve(self, question: str, top_k: int = 8) -> List[DocumentChunk]:
+        """Perform hybrid search (Semantic + Keyword) with weighted scoring."""
         chunks = self._load_index()
         if not chunks: return []
         
         emb_model = self._get_embedding_model()
-        if not emb_model: return self._naive_retrieve(question, top_k)
-        
-        q_emb = emb_model.encode(question)
-        scored = []
-        for ch in chunks:
-            if ch.embedding is not None:
-                sim = np.dot(q_emb, ch.embedding) / (np.linalg.norm(q_emb) * np.linalg.norm(ch.embedding) + 1e-8)
-                scored.append((sim, ch))
-        
-        scored.sort(key=lambda x: x[0], reverse=True)
-        return [c for _, c in scored[:top_k]]
-
-    def _naive_retrieve(self, question: str, top_k: int = 4) -> List[DocumentChunk]:
-        chunks = self._load_index()
         q_words = set(question.lower().split())
-        scored = []
+        
+        # 1. Calculate semantic scores if model loaded
+        semantic_scores = {}
+        if emb_model:
+            q_emb = emb_model.encode(question)
+            for ch in chunks:
+                if ch.embedding is not None:
+                    sim = np.dot(q_emb, ch.embedding) / (np.linalg.norm(q_emb) * np.linalg.norm(ch.embedding) + 1e-8)
+                    semantic_scores[f"{ch.doc_id}_{ch.chunk_id}"] = float(sim)
+        
+        # 2. Calculate keyword scores (BM25-lite)
+        keyword_scores = {}
         for ch in chunks:
             overlap = len(q_words & set(ch.text.lower().split()))
-            scored.append((overlap, ch))
-        scored.sort(key=lambda x: x[0], reverse=True)
-        return [c for _, c in scored[:top_k]]
+            # Normalize by chunk length roughly
+            score = overlap / (math.log(len(ch.text.split()) + 1) + 1)
+            keyword_scores[f"{ch.doc_id}_{ch.chunk_id}"] = score
+
+        # 3. Combine scores (Weighted: 70% Semantic, 30% Keyword)
+        combined = []
+        for ch in chunks:
+            key = f"{ch.doc_id}_{ch.chunk_id}"
+            sem = semantic_scores.get(key, 0)
+            keyw = keyword_scores.get(key, 0)
+            
+            # Simple weighted fusion
+            final_score = float((0.7 * sem) + (0.3 * keyw))
+            combined.append((final_score, ch))
+        
+        combined.sort(key=lambda x: x[0], reverse=True)
+        return [c for _, c in combined[:top_k]]
 
     # --- Public API ---
 
     def answer_question(self, question: str) -> Dict[str, Any]:
-        """Answer a question using optimized RAG."""
-        # 1. Retrieve more context (up to 8 chunks) for better coverage
-        retrieved = self._semantic_retrieve(question, top_k=8)
+        """Answer a question using enhanced hybrid RAG and CoT reasoning."""
+        # 1. Perform Hybrid Retrieval
+        retrieved = self._hybrid_retrieve(question, top_k=8)
         
-        # 2. Add local keyword boosting if specific terms like dates or names are in question
-        if not retrieved or len(retrieved) < 3:
-            retrieved += self._naive_retrieve(question, top_k=4)
-            # Remove duplicates
-            seen = set()
-            retrieved = [x for x in retrieved if not (x.doc_id + str(x.chunk_id) in seen or seen.add(x.doc_id + str(x.chunk_id)))]
-
-        context = "\n\n---\n\n".join(f"SOURCE: {ch.doc_id}\nCONTENT: {ch.text}" for ch in retrieved)
+        context_text = "\n\n---\n\n".join(f"DOCUMENT: {ch.doc_id} (Section {ch.chunk_id})\nCONTENT: {ch.text}" for ch in retrieved)
         
         prompt = f"""<|begin_of_text|><|start_header_id|>system<|end_header_id|>
-        You are NyayNeti, a top-tier Indian Legal Intelligence AI. 
-        Your goal is to provide legally sound, fact-based answers using ONLY the provided context from the Digital Archive.
+You are NyayNeti, the Premier Indian Legal Intelligence Engine. Your reasoning must be robust, citing specific sources.
 
-        RULES:
-        1. If the context contains the answer, cite the Document ID (e.g., [SOURCE: case.pdf]).
-        2. If the context is insufficient but mentions related case numbers or sections, highlight those.
-        3. If no relevant info exists in the context, clearly state: "The current local archive does not contain specific details on this query."
-        4. Do NOT hallucinate dates or names not present in the CONTENT blocks below.
-        5. Structure your response with "Analysis" and "Conclusion" for professional clarity.<|eot_id|>
-        <|start_header_id|>user<|end_header_id|>
-        DIGITAL ARCHIVE EXCERPTS:
-        -----
-        {context if context else "No relevant documents found. Please index more case files."}
-        -----
+THOUGHT PROCESS (INTERNAL):
+1. Identify the core legal conflict in the user's question.
+2. Scan the provided Digital Archive excerpts for relevant statutes, precedents, or factual details.
+3. If specific documents are found, summarize their relevance.
+4. Formulate a professional conclusion based ONLY on the provided text.
 
-        LEGAL QUESTION: {question}<|eot_id|>
-        <|start_header_id|>assistant<|end_header_id|>"""
+OUTPUT STRUCTURE:
+- Analysis: A detailed walk-through of the relevant facts and law from the archive.
+- Conclusion: A concise final answer.
+- Confidence: High/Medium/Low based on context availability.
+
+RULES:
+- Cite [SOURCE: filename] for every factual claim.
+- If the archive doesn't have the info, say: "The local database lacks specific details on this, but here is what is available..."
+- Do NOT use external knowledge not present in the archive.<|eot_id|>
+<|start_header_id|>user<|end_header_id|>
+DIGITAL ARCHIVE:
+{context_text if context_text else "No records found in the current archive context."}
+
+LEGAL QUESTION: {question}<|eot_id|>
+<|start_header_id|>assistant<|end_header_id|>"""
         
-        answer = self._call_llm(prompt, max_tokens=800)
+        answer = self._call_llm(prompt, max_tokens=1000)
         
-        return {
+        # Determine confidence based on retrieval scores (mocked here as simple heuristic)
+        confidence = "High" if len(retrieved) >= 3 else "Medium"
+        if not retrieved: confidence = "Low"
+
+        final_resp = {
             "answer": answer,
-            "context_snippets": [{"doc_id": ch.doc_id, "text": ch.text[:500]} for ch in retrieved],
-            "confidence": "high" if retrieved else "low",
-            "backend": "local-cpu" if self._llm else ("ollama" if self._check_ollama() else "N/A")
+            "context_snippets": [{"doc_id": ch.doc_id, "text": ch.text[:400]} for ch in retrieved],
+            "confidence": confidence,
+            "engine": "Local GGUF" if self._llm else "Ollama Cloud/Local",
+            "stats": {"retrieved_chunks": len(retrieved)}
         }
+        
+        return sanitize_for_json(final_resp)
 
     def summarize_document(self, doc_id: str) -> Dict[str, Any]:
+        """Generate a comprehensive summary of a legal document."""
         chunks = [ch for ch in self._load_index() if ch.doc_id == doc_id]
         if not chunks: return {"error": "Document not found"}
         
-        text = "\n\n".join(ch.text for ch in chunks[:5]) 
+        # Take beginning, middle, and end chunks to get a better overview
+        if len(chunks) <= 6:
+            summary_chunks = chunks
+        else:
+            summary_chunks = chunks[:3] + chunks[len(chunks)//2 : len(chunks)//2 + 2] + chunks[-2:]
+            
+        text = "\n\n".join(ch.text for ch in summary_chunks) 
         prompt = f"""<|begin_of_text|><|start_header_id|>system<|end_header_id|>
-        Summarize the key legal issues, parties involved, and the final ruling of this case concisely.<|eot_id|>
-        <|start_header_id|>user<|end_header_id|>
-        DOCUMENT TEXT:
-        {text}<|eot_id|>
-        <|start_header_id|>assistant<|end_header_id|>"""
+You are NyayNeti. Summarize this legal document emphasizing:
+1. Parties and Case Number.
+2. Core Legal Issue/Argument.
+3. Relevant Sections/Laws cited.
+4. Court's Reasoning and Final Decision.<|eot_id|>
+<|start_header_id|>user<|end_header_id|>
+DOCUMENT EXCERPTS (Full Doc ID: {doc_id}):
+{text}<|eot_id|>
+<|start_header_id|>assistant<|end_header_id|>"""
         
-        summary = self._call_llm(prompt, max_tokens=400)
-        return {"doc_id": doc_id, "summary": summary}
+        summary = self._call_llm(prompt, max_tokens=600)
+        return sanitize_for_json({"doc_id": doc_id, "summary": summary})
 
     def get_indexed_documents(self) -> List[Dict[str, Any]]:
         chunks = self._load_index()
@@ -337,10 +410,44 @@ class LLMEngine:
         return list(docs.values())
 
     def get_model_status(self) -> Dict[str, Any]:
-        return {
+        indexed_docs = self.get_indexed_documents()
+        return sanitize_for_json({
             "local_llm_loaded": self._llm is not None,
             "ollama_available": self._check_ollama(),
             "embedding_model_loaded": self._embedding_model is not None,
             "demo_mode": self.demo_mode,
-            "indexed_docs_count": len(self.get_indexed_documents())
-        }
+            "indexed_docs_count": len(indexed_docs),
+            "indexed_docs": indexed_docs
+        })
+
+    def answer_question_stream(self, question: str):
+        """Answer a question with real-time streaming for maximum speed perception."""
+        retrieved = self._hybrid_retrieve(question, top_k=6)
+        context_text = "\n\n---\n\n".join(f"DOCUMENT: {ch.doc_id}\nCONTENT: {ch.text}" for ch in retrieved)
+        
+        prompt = f"""<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+You are NyayNeti, a top-tier Indian Legal Intelligence AI. 
+Provide a professional legal analysis based on the provided context.
+ 
+STRUCTURE:
+Analysis: (Cite [SOURCE: filename])
+Conclusion: (Final summary)
+Confidence: (High/Medium/Low)
+ 
+Use the provided excerpts to formulate your answer.<|eot_id|>
+<|start_header_id|>user<|end_header_id|>
+CONTEXT:
+{context_text}
+ 
+QUESTION: {question}<|eot_id|>
+<|start_header_id|>assistant<|end_header_id|>"""
+        
+        # Meta-info packet
+        metadata = sanitize_for_json({
+            "context_snippets": [{"doc_id": ch.doc_id, "text": ch.text[:200]} for ch in retrieved],
+            "confidence": "High" if retrieved else "Low"
+        })
+        yield f"DATA: {json.dumps(metadata)}\n\n"
+        
+        for token in self._call_llm(prompt, max_tokens=1000, stream=True):
+            yield token
