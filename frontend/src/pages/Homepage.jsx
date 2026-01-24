@@ -1,9 +1,43 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { apiClient } from '../api/client';
 
 function Homepage() {
+  const navigate = useNavigate();
+  const fileInputRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (file && file.type === 'application/pdf') {
+      setUploading(true);
+      try {
+        await apiClient.uploadFile(file);
+        navigate('/dashboard');
+      } catch (error) {
+        console.error('Upload failed:', error);
+        alert('Upload failed. Please ensure the backend is running.');
+      } finally {
+        setUploading(false);
+      }
+    }
+  };
+
   return (
     <div className="relative flex min-h-screen flex-col overflow-x-hidden bg-background-light dark:bg-background-dark font-display text-white">
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf"
+        onChange={handleFileSelect}
+        className="hidden"
+      />
+
       {/* Top Navigation */}
       <header className="sticky top-0 z-50 glass-header px-6 md:px-20 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -17,8 +51,12 @@ function Homepage() {
           </Link>
         </nav>
         <div className="flex items-center gap-4">
-          <button className="bg-accent-gold text-primary text-sm font-bold px-5 py-2 rounded-lg hover:bg-white transition-all">
-            Upload PDF
+          <button
+            onClick={handleUploadClick}
+            disabled={uploading}
+            className="bg-accent-gold text-primary text-sm font-bold px-5 py-2 rounded-lg hover:bg-white transition-all disabled:opacity-50"
+          >
+            {uploading ? 'Uploading...' : 'Upload PDF'}
           </button>
         </div>
       </header>
@@ -47,9 +85,13 @@ function Homepage() {
             judgments locally with zero data leakage.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 w-full justify-center">
-            <button className="bg-accent-gold text-primary h-14 px-8 rounded-lg font-bold text-lg hover:scale-105 transition-transform flex items-center justify-center gap-2">
-              <span className="material-symbols-outlined">upload_file</span>
-              Upload Judgment PDF
+            <button
+              onClick={handleUploadClick}
+              disabled={uploading}
+              className="bg-accent-gold text-primary h-14 px-8 rounded-lg font-bold text-lg hover:scale-105 transition-transform flex items-center justify-center gap-2 disabled:opacity-50 disabled:hover:scale-100"
+            >
+              <span className="material-symbols-outlined">{uploading ? 'sync' : 'upload_file'}</span>
+              {uploading ? 'Processing...' : 'Upload Judgment PDF'}
             </button>
             <Link to="/dashboard" className="border border-white/20 bg-white/5 backdrop-blur-md h-14 px-8 rounded-lg font-bold text-lg hover:bg-white/10 transition-all flex items-center justify-center gap-2">
               <span className="material-symbols-outlined">account_balance</span>

@@ -7,10 +7,15 @@ import ConstitutionalLibrary from './pages/ConstitutionalLibrary';
 import GeneralDashboard from './pages/GeneralDashboard';
 import MyResearch from './pages/MyResearch';
 import ResearchBoundaries from './pages/ResearchBoundaries';
+import StatusBar from './components/StatusBar';
+import { useKeyboardShortcuts, ShortcutsHint } from './hooks/useKeyboardShortcuts';
 
-function App() {
+function AppContent() {
+  // Enable global keyboard shortcuts
+  useKeyboardShortcuts();
+
   return (
-    <Router>
+    <>
       <Routes>
         <Route path="/" element={<Homepage />} />
         <Route path="/dashboard" element={<GeneralDashboard />} />
@@ -20,8 +25,19 @@ function App() {
         <Route path="/research" element={<MyResearch />} />
         <Route path="/boundaries" element={<ResearchBoundaries />} />
       </Routes>
+      <StatusBar />
+      <ShortcutsHint />
+    </>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <AppContent />
     </Router>
   );
 }
 
 export default App;
+
