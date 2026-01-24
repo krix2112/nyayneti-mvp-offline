@@ -1,7 +1,9 @@
+
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Homepage from './pages/Homepage';
 import Dashboard from './pages/Dashboard';
+import CaseMatch from './pages/CaseMatch';
 import PrecedentExplorer from './pages/PrecedentExplorer';
 import ConstitutionalLibrary from './pages/ConstitutionalLibrary';
 import GeneralDashboard from './pages/GeneralDashboard';
@@ -20,6 +22,7 @@ function AppContent() {
         <Route path="/" element={<Homepage />} />
         <Route path="/dashboard" element={<GeneralDashboard />} />
         <Route path="/analysis" element={<Dashboard />} />
+        <Route path="/matcher" element={<CaseMatch />} />
         <Route path="/precedents" element={<PrecedentExplorer />} />
         <Route path="/constitutional" element={<ConstitutionalLibrary />} />
         <Route path="/research" element={<MyResearch />} />
@@ -40,4 +43,3 @@ function App() {
 }
 
 export default App;
-
