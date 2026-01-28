@@ -942,10 +942,10 @@ Thank you to the Indian legal community for invaluable feedback during developme
       <sub><b>Krishna</b></sub><br />
       <sub>🎨 Frontend Lead • UI/UX Design</sub><br />
       <sub>React • Tailwind • Design Systems</sub><br /><br />
-      <a href="https://github.com/krishna">
+      <a href="https://github.com/krix2112">
         <img src="https://img.shields.io/badge/-GitHub-181717?style=flat-square&logo=github" />
       </a>
-      <a href="https://linkedin.com/in/krishna">
+      <a href="[https://linkedin.com/in/krishna](https://www.linkedin.com/in/krishna-verma-2177b3394/)">
         <img src="https://img.shields.io/badge/-LinkedIn-0A66C2?style=flat-square&logo=linkedin" />
       </a>
     </td>
@@ -954,10 +954,10 @@ Thank you to the Indian legal community for invaluable feedback during developme
       <sub><b>Vansh Bhatia</b></sub><br />
       <sub>🧠 Backend Lead • AI/ML Engineering</sub><br />
       <sub>Python • Flask • LLMs • RAG</sub><br /><br />
-      <a href="https://github.com/vansh">
+      <a href="https://github.com/vanssh012">
         <img src="https://img.shields.io/badge/-GitHub-181717?style=flat-square&logo=github" />
       </a>
-      <a href="https://linkedin.com/in/vansh">
+      <a href="https://www.linkedin.com/in/vansh-bhatia-9aa017269/">
         <img src="https://img.shields.io/badge/-LinkedIn-0A66C2?style=flat-square&logo=linkedin" />
       </a>
     </td>
