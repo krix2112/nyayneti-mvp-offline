@@ -43,8 +43,6 @@ https://github.com/user-attachments/assets/465b61b9-4ddd-4274-9202-ef4897951512
 - ✅ **Verifiable citations** - every answer includes [Page X, Para Y]
 - 🎯 **Real-time streaming** - watch the AI think
 
-**🎥 Alternative: Watch on YouTube →** [NyayNeti Demo](https://youtube.com/watch?v=your-video-id)
-
 </div>
 
 ---
