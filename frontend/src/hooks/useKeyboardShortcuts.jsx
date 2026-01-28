@@ -63,6 +63,9 @@ NyayNeti Keyboard Shortcuts:
  * Keyboard shortcuts indicator component
  */
 export function ShortcutsHint() {
+    // Hidden during presentation - uncomment to show shortcuts panel
+    return null;
+    /*
     return (
         <div className="fixed bottom-4 left-4 text-[10px] text-slate-600 space-y-1 bg-slate-800/30 backdrop-blur-sm p-3 rounded-lg border border-slate-800 hidden lg:block">
             <div className="text-slate-500 font-bold uppercase tracking-widest mb-2">Shortcuts</div>
@@ -71,4 +74,5 @@ export function ShortcutsHint() {
             <div><kbd className="px-1 py-0.5 bg-slate-700 rounded text-slate-400">?</kbd> Help</div>
         </div>
     );
+    */
 }

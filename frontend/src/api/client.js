@@ -16,7 +16,7 @@ function handleAPIError(error, context = 'API call') {
 /**
  * Wrapper for fetch with timeout and error handling
  */
-async function fetchWithTimeout(url, options = {}, timeout = 30000) {
+async function fetchWithTimeout(url, options = {}, timeout = 60000) {
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeout);
 
@@ -86,7 +86,7 @@ export const apiClient = {
             const res = await fetchWithTimeout(`${API_BASE_URL}/api/upload`, {
                 method: 'POST',
                 body: formData,
-            }, 60000); // 60s timeout for large files
+            }, 300000); // 5 minute timeout for large files and embedding generation
 
             return await res.json();
         } catch (error) {
@@ -158,6 +158,27 @@ export const apiClient = {
     },
 
     /**
+     * Compare two documents
+     */
+    async compare(doc1Id, doc2Id, type = 'full') {
+        try {
+            const res = await fetchWithTimeout(`${API_BASE_URL}/api/compare`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    doc1_id: doc1Id,
+                    doc2_id: doc2Id,
+                    comparison_type: type
+                }),
+            }, 120000); // 2min timeout for complex comparison
+
+            return await res.json();
+        } catch (error) {
+            handleAPIError(error, 'Compare documents');
+        }
+    },
+
+    /**
      * Answer a legal question using RAG with streaming
      */
     async streamQuery(question, onToken, onMetadata) {
@@ -185,7 +206,65 @@ export const apiClient = {
             buffer += decoder.decode(value, { stream: true });
 
             if (!metadataProcessed) {
-                const boundary = buffer.indexOf("\n\n");
+                const boundary = buffer.indexOf("\\n\\n");
+                if (boundary !== -1) {
+                    const metadataPart = buffer.substring(0, boundary);
+                    const remaining = buffer.substring(boundary + 2);
+
+                    if (metadataPart.startsWith("DATA: ")) {
+                        try {
+                            const jsonStr = metadataPart.replace("DATA: ", "");
+                            const metadata = JSON.parse(jsonStr);
+                            if (onMetadata) onMetadata(metadata);
+                        } catch (e) {
+                            console.error("Failed to parse metadata", e);
+                        }
+                    }
+                    metadataProcessed = true;
+                    buffer = remaining;
+                    if (buffer) {
+                        onToken(buffer);
+                        buffer = "";
+                    }
+                }
+            } else {
+                onToken(buffer);
+                buffer = "";
+            }
+        }
+    },
+
+    /**
+     * Compare PDF with streaming response
+     */
+    async comparePdfStream(selectedPdfId, query, onToken, onMetadata) {
+        const res = await fetch(`${API_BASE_URL}/api/compare-pdf`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                selected_pdf_id: selectedPdfId,
+                query: query || ''
+            }),
+        });
+
+        if (!res.ok) {
+            const errorData = await res.json().catch(() => ({}));
+            throw new Error(errorData.error || `Server returned ${res.status}`);
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let metadataProcessed = false;
+        let buffer = "";
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+
+            if (!metadataProcessed) {
+                const boundary = buffer.indexOf("\\n\\n");
                 if (boundary !== -1) {
                     const metadataPart = buffer.substring(0, boundary);
                     const remaining = buffer.substring(boundary + 2);

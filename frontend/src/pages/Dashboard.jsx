@@ -1,207 +1,296 @@
+import React, { useState, useRef } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
-import { apiClient } from '../api/client';
+export default function Dashboard() {
+  const navigate = useNavigate();
+  const fileInputRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState('');
+  const [progressPercent, setProgressPercent] = useState(0);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState(null);
+  const [error, setError] = useState('');
 
-function Dashboard() {
-  const [question, setQuestion] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [chatHistory, setChatHistory] = useState([]);
-  const [status, setStatus] = useState(null);
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
 
-  // Auto-scroll to bottom of chat
-  const chatContainerRef = useRef(null);
+  const handleFileSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (file && file.type === 'application/pdf') {
+      setUploading(true);
+      setUploadProgress('Starting upload...');
+      setProgressPercent(0);
+      setError('');
+      setUploadSuccess(false);
 
-  useEffect(() => {
-    apiClient.getStatus().then(setStatus).catch(console.error);
-  }, []);
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
 
-  useEffect(() => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-    }
-  }, [chatHistory, loading]);
+        // Use fetch with SSE for progress updates
+        const response = await fetch('http://localhost:8000/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
 
-  const handleSendMessage = async () => {
-    if (!question.trim()) return;
-
-    const userMsg = { role: 'user', content: question };
-    setChatHistory(prev => [...prev, userMsg]);
-    setLoading(true);
-    setQuestion('');
-
-    try {
-      // Use streaming query for better UX
-      let aiResponseText = "";
-      let currentMetadata = null;
-
-      const aiMsgId = Date.now();
-      // Add placeholder
-      setChatHistory(prev => [...prev, { role: 'ai', content: '', id: aiMsgId }]);
-
-      await apiClient.streamQuery(
-        userMsg.content,
-        (token) => {
-          aiResponseText += token;
-          setChatHistory(prev => prev.map(msg =>
-            msg.id === aiMsgId ? { ...msg, content: aiResponseText, snippets: currentMetadata?.context_snippets } : msg
-          ));
-        },
-        (metadata) => {
-          currentMetadata = metadata;
+        if (!response.ok) {
+          throw new Error('Upload failed');
         }
-      );
 
-    } catch (err) {
-      setChatHistory(prev => [...prev, { role: 'error', content: 'Failed to connect to Neural Engine. Ensure backend is running.' }]);
-    } finally {
-      setLoading(false);
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const data = JSON.parse(line.slice(6));
+
+                if (data.error) {
+                  setError(data.status || 'Upload failed');
+                  setUploading(false);
+                  return;
+                }
+
+                setUploadProgress(data.status || 'Processing...');
+                setProgressPercent(data.progress || 0);
+
+                if (data.success) {
+                  setUploadSuccess(true);
+                  setUploadedFile({
+                    name: data.filename || file.name,
+                    chunks: data.chunks || 0
+                  });
+                  setUploading(false);
+                }
+              } catch (err) {
+                console.error('Failed to parse progress:', err);
+              }
+            }
+          }
+        }
+
+        // Reset file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+      } catch (error) {
+        console.error('Upload failed:', error);
+        let errorMessage = 'Upload failed. ';
+
+        if (error.message.includes('500')) {
+          errorMessage += 'Server error - check backend logs for details.';
+        } else if (error.message.includes('Failed to fetch')) {
+          errorMessage += 'Cannot connect to backend. Please ensure the backend server is running on port 8000.';
+        } else {
+          errorMessage += error.message;
+        }
+
+        setError(errorMessage);
+        setUploadSuccess(false);
+        setUploading(false);
+      }
+    } else {
+      setError('Please select a valid PDF file.');
     }
   };
 
   return (
-    <div className="bg-background-light dark:bg-background-dark text-slate-200 overflow-hidden h-screen flex flex-col font-display">
-      {/* Top Header */}
-      <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-[#2b2f36] bg-primary px-6 py-3 shrink-0">
-        <div className="flex items-center gap-8">
-          <Link to="/" className="flex items-center gap-3">
-            <img src="/logo.png" alt="NyayNeti Logo" className="h-10 w-auto object-contain" />
-          </Link>
-          <div className="flex items-center gap-2 bg-[#1a2332] px-3 py-1.5 rounded-lg border border-[#2b2f36]">
-            <span className={`material-symbols-outlined ${status?.ollama_available ? 'text-green-400' : 'text-amber-400'} text-sm`}>
-              {status?.ollama_available ? 'check_circle' : 'pending'}
-            </span>
-            <p className="text-xs font-medium text-slate-300 uppercase tracking-wider">
-              {status?.ollama_available ? 'Neural Engine Active' : 'Connecting to Core...'}
-            </p>
-          </div>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 text-white font-display">
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf"
+        onChange={handleFileSelect}
+        className="hidden"
+      />
 
-        {/* Profile */}
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-6 mr-4 border-r border-[#2b2f36] pr-6">
-            <Link className="text-slate-400 hover:text-white text-sm font-medium transition-colors" to="/constitutional">Library</Link>
-            <Link className="text-slate-400 hover:text-white text-sm font-medium transition-colors" to="/matcher">Case Matcher</Link>
-          </div>
-          <div className="relative" onClick={() => setIsProfileOpen(!isProfileOpen)}>
-            <div className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-9 ring-2 ring-blue-500/20 bg-slate-700 flex items-center justify-center cursor-pointer">
-              <span className="text-white text-xs font-bold">V</span>
-            </div>
-          </div>
+      {/* Top Navigation */}
+      <header className="sticky top-0 z-50 glass-header px-6 md:px-20 py-4 flex items-center justify-between border-b border-white/10">
+        <div className="flex items-center gap-3">
+          <Link to="/" className="flex items-center">
+            <img src="/logo.png" alt="NyayNeti Logo" className="h-12 w-auto object-contain" />
+          </Link>
         </div>
+        <nav className="flex items-center gap-6">
+          <Link className="text-sm font-medium text-gold hover:text-white transition-colors" to="/my-research">
+            My Research
+          </Link>
+          <Link className="text-sm font-medium text-gray-300 hover:text-white transition-colors" to="/compare">
+            Compare
+          </Link>
+        </nav>
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
-        <aside className="w-64 border-r border-[#2b2f36] bg-primary flex flex-col h-full sticky top-0 shrink-0">
-          <div className="p-4 space-y-2">
-            <Link to="/analysis" className="flex items-center gap-3 px-3 py-2.5 bg-blue-600/10 text-blue-400 rounded-lg border border-blue-500/20">
-              <span className="material-symbols-outlined">chat</span>
-              <span className="text-sm font-bold">Legal Assistant</span>
-            </Link>
-            <Link to="/matcher" className="flex items-center gap-3 px-3 py-2.5 text-slate-400 hover:text-white transition-colors">
-              <span className="material-symbols-outlined">compare_arrows</span>
-              <span className="text-sm font-medium">Case Matcher</span>
-            </Link>
-            <Link to="/dashboard" className="flex items-center gap-3 px-3 py-2.5 text-slate-400 hover:text-white transition-colors">
-              <span className="material-symbols-outlined">dashboard</span>
-              <span className="text-sm font-medium">Overview</span>
-            </Link>
+      {/* Main Upload Section */}
+      <main className="container mx-auto px-4 py-20">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="max-w-3xl mx-auto"
+        >
+          {/* Title */}
+          <div className="text-center mb-12">
+            <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-gold to-orange-400 bg-clip-text text-transparent">
+              Upload Legal Documents
+            </h1>
+            <p className="text-xl text-gray-300">
+              Process PDFs locally with AI-powered analysis
+            </p>
           </div>
 
-          <div className="mt-auto p-4 border-t border-[#2b2f36]">
-            <div className="bg-[#1a2332] p-3 rounded-xl border border-[#2b2f36]">
-              <div className="text-[10px] font-bold text-slate-500 uppercase mb-2">System Status</div>
-              <div className="flex justify-between text-xs text-slate-300">
-                <span>Corpus:</span>
-                <span className="text-white font-bold">{status?.indexed_docs_count || 0} Docs</span>
-              </div>
-              <div className="flex justify-between text-xs text-slate-300 mt-1">
-                <span>Mode:</span>
-                <span className="text-green-400 font-bold">Offline</span>
-              </div>
-            </div>
-          </div>
-        </aside>
+          {/* Upload Card */}
+          <div className="bg-white/5 backdrop-blur-lg rounded-3xl p-12 border border-white/10 shadow-2xl">
+            {!uploadSuccess ? (
+              <>
+                {/* Upload Area */}
+                <div
+                  onClick={handleUploadClick}
+                  className="border-2 border-dashed border-gold/30 rounded-2xl p-16 text-center cursor-pointer hover:border-gold hover:bg-gold/5 transition-all group"
+                >
+                  <motion.div
+                    whileHover={{ scale: 1.1 }}
+                    className="inline-block mb-6"
+                  >
+                    <span className="material-symbols-outlined text-8xl text-gold group-hover:text-orange-400 transition-colors">
+                      {uploading ? 'sync' : 'upload_file'}
+                    </span>
+                  </motion.div>
 
-        {/* Chat Area */}
-        <main className="flex-1 flex flex-col bg-[#0d121b] relative">
-          <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6 custom-scrollbar" ref={chatContainerRef}>
-            {chatHistory.length === 0 && (
-              <div className="flex-1 flex flex-col items-center justify-center opacity-40">
-                <span className="material-symbols-outlined text-7xl text-slate-600 mb-4">smart_toy</span>
-                <h2 className="text-2xl font-bold text-slate-400">NyayNeti Legal Assistant</h2>
-                <p className="text-sm text-slate-500 mt-2 max-w-md text-center">
-                  Ask complex legal questions, request case summaries, or draft arguments based on the offline local corpus.
-                </p>
-              </div>
-            )}
+                  <h3 className="text-2xl font-bold mb-2">
+                    {uploading ? uploadProgress : 'Click to Upload PDF'}
+                  </h3>
+                  <p className="text-gray-400">
+                    {uploading ? `${progressPercent}% complete` : 'Or drag and drop your PDF file here'}
+                  </p>
 
-            {chatHistory.map((msg, i) => (
-              <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} animate-in fade-in slide-in-from-bottom-2`}>
-                <div className={`max-w-[80%] rounded-2xl p-5 text-sm leading-relaxed shadow-lg ${msg.role === 'user'
-                    ? 'bg-blue-600 text-white rounded-tr-none'
-                    : 'bg-[#1a2332] text-slate-200 border border-[#2b2f36] rounded-tl-none'
-                  }`}>
-                  <p className="whitespace-pre-wrap">{msg.content}</p>
-
-                  {/* Context Citations */}
-                  {msg.snippets && msg.snippets.length > 0 && (
-                    <div className="mt-4 pt-4 border-t border-slate-700/50">
-                      <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-2">Sources Cited:</p>
-                      <div className="space-y-2">
-                        {msg.snippets.map((s, si) => (
-                          <div key={si} className="bg-black/20 p-2 rounded text-[11px] border border-slate-700/50">
-                            <span className="font-bold text-accent-gold">{s.doc_id}:</span>
-                            <span className="text-slate-400 ml-1 italic">"{s.text.substring(0, 100)}..."</span>
-                          </div>
-                        ))}
+                  {uploading && (
+                    <div className="mt-8 max-w-md mx-auto">
+                      <div className="h-3 bg-slate-700 rounded-full overflow-hidden">
+                        <motion.div
+                          className="h-full bg-gradient-to-r from-gold to-orange-400"
+                          initial={{ width: '0%' }}
+                          animate={{ width: `${progressPercent}%` }}
+                          transition={{ duration: 0.3 }}
+                        />
                       </div>
+                      <p className="text-xs text-gray-500 mt-2">{uploadProgress}</p>
                     </div>
                   )}
                 </div>
-              </div>
-            ))}
 
-            {loading && chatHistory[chatHistory.length - 1]?.role === 'user' && (
-              <div className="flex items-center gap-2 text-blue-400 px-4">
-                <span className="size-2 bg-blue-400 rounded-full animate-bounce"></span>
-                <span className="size-2 bg-blue-400 rounded-full animate-bounce delay-75"></span>
-                <span className="size-2 bg-blue-400 rounded-full animate-bounce delay-150"></span>
-              </div>
+                {/* Error Message */}
+                {error && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-center"
+                  >
+                    <span className="material-symbols-outlined text-xl align-middle mr-2">error</span>
+                    {error}
+                  </motion.div>
+                )}
+
+                {/* Info */}
+                <div className="mt-8 flex items-center justify-center gap-8 text-sm text-gray-400">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-green-400">check_circle</span>
+                    100% Offline
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-green-400">lock</span>
+                    Secure Local Processing
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-green-400">speed</span>
+                    AI-Powered
+                  </div>
+                </div>
+              </>
+            ) : (
+              /* Success State */
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="text-center"
+              >
+                <div className="inline-block mb-6">
+                  <span className="material-symbols-outlined text-8xl text-green-400">
+                    check_circle
+                  </span>
+                </div>
+
+                <h3 className="text-3xl font-bold mb-2 text-green-400">
+                  Upload Successful!
+                </h3>
+                <p className="text-xl text-gray-300 mb-2">
+                  {uploadedFile?.name}
+                </p>
+                <p className="text-sm text-gray-400 mb-8">
+                  Indexed {uploadedFile?.chunks} chunks for analysis
+                </p>
+
+                {/* Action Buttons */}
+                <div className="flex gap-4 justify-center">
+                  <button
+                    onClick={() => {
+                      setUploadSuccess(false);
+                      setUploadedFile(null);
+                      setProgressPercent(0);
+                    }}
+                    className="px-8 py-3 bg-white/10 hover:bg-white/20 rounded-xl font-bold transition-all"
+                  >
+                    Upload Another
+                  </button>
+                  <button
+                    onClick={() => navigate('/my-research')}
+                    className="px-8 py-3 bg-gradient-to-r from-gold to-orange-600 hover:from-orange-600 hover:to-gold rounded-xl font-bold transition-all"
+                  >
+                    View My Research →
+                  </button>
+                </div>
+              </motion.div>
             )}
           </div>
 
-          {/* Input Zone */}
-          <div className="p-4 bg-primary border-t border-[#2b2f36]">
-            <div className="max-w-4xl mx-auto relative flex items-center">
-              <input
-                className="w-full bg-[#1a2332] border border-[#2b2f36] rounded-xl py-4 pl-5 pr-14 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 shadow-xl"
-                placeholder="Ask a legal question... (e.g. 'What are the bail conditions for economic offenses?')"
-                value={question}
-                onChange={(e) => setQuestion(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                disabled={loading}
-              />
-              <button
-                onClick={handleSendMessage}
-                disabled={loading || !question.trim()}
-                className="absolute right-2 p-2.5 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-lg transition-colors"
-              >
-                <span className="material-symbols-outlined text-[20px]">send</span>
-              </button>
-            </div>
-            <div className="text-center mt-2">
-              <p className="text-[10px] text-slate-500">
-                AI can make mistakes. Always verify citations with the <Link to="/constitutional" className="text-blue-400 hover:underline">Library</Link>.
-              </p>
-            </div>
+          {/* Quick Links */}
+          <div className="mt-12 grid grid-cols-2 gap-6">
+            <Link
+              to="/my-research"
+              className="p-6 bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 hover:border-gold/50 transition-all group"
+            >
+              <span className="material-symbols-outlined text-4xl text-gold mb-3 block group-hover:scale-110 transition-transform">
+                folder_open
+              </span>
+              <h4 className="font-bold text-lg mb-1">My Research</h4>
+              <p className="text-sm text-gray-400">View all uploaded documents</p>
+            </Link>
+
+            <Link
+              to="/compare"
+              className="p-6 bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 hover:border-gold/50 transition-all group"
+            >
+              <span className="material-symbols-outlined text-4xl text-gold mb-3 block group-hover:scale-110 transition-transform">
+                compare_arrows
+              </span>
+              <h4 className="font-bold text-lg mb-1">Compare Documents</h4>
+              <p className="text-sm text-gray-400">AI-powered comparison analysis</p>
+            </Link>
           </div>
-        </main>
-      </div>
+        </motion.div>
+      </main>
     </div>
   );
 }
-
-export default Dashboard;

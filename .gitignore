@@ -1,51 +1,138 @@
+# NyayNeti - Git Ignore File
+
+# ==========================================
+# PYTHON
+# ==========================================
 __pycache__/
 *.py[cod]
-*.pyc
+*$py.class
+*.so
 .Python
-env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
 venv/
-.venv/
+ENV/
+env/
+.venv
 
-# VSCode / IDE
-.vscode/
-.idea/
-*.swp
+# ==========================================
+# AI MODELS (Large Files)
+# ==========================================
+# LLM models (GGUF files are huge ~1-2GB)
+ml/models/*.gguf
+ml/models/**/*.gguf
 
-# Node
-node_modules/
-frontend/node_modules/
-frontend/dist/
-frontend/.vite/
+# Downloaded embedding models (~90MB)
+backend/models/embeddings/*
+!backend/models/embeddings/.gitkeep
 
-# Python
-backend/.env
-backend/*.sqlite3
-backend/.pytest_cache/
-backend/.coverage
-.coverage
+# Embeddings database (user-generated)
+ml/embeddings/*.pkl
+ml/embeddings/*.jsonl
 
-# Logs & temp
-logs/
-*.log
-tmp/
-*.tmp
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# Models & data
-ml/models/*
-!ml/models/.gitkeep
-ml/embeddings/*
-!ml/embeddings/.gitkeep
-backend/demo_data/*
-!backend/demo_data/.gitkeep
+# ==========================================
+# USER DATA
+# ==========================================
+# Uploaded PDFs (user documents)
 backend/uploads/*
 !backend/uploads/.gitkeep
 
-# Env
-.env
-*.env.local
+# Demo documents (can be optional)
+backend/demo_documents/*.pdf
+backend/demo_documents/*.PDF
+!backend/demo_documents/.gitkeep
 
-nul
+# User data directories
+%APPDATA%/NyayNeti/
+~/.nyayneti/
+
+# ==========================================
+# ENVIRONMENT & CONFIG
+# ==========================================
+.env
+.env.local
+.env.*.local
+
+# ==========================================
+# FRONTEND (Node.js / React)
+# ==========================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnp
+.pnp.js
+
+# Production build
+frontend/dist/
+frontend/build/
+
+# Testing
+coverage/
+
+# ==========================================
+# IDE & EDITORS
+# ==========================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# ==========================================
+# LOGS
+# ==========================================
+*.log
+logs/
+*.log.*
+
+# ==========================================
+# TEMPORARY FILES
+# ==========================================
+*.tmp
+*.temp
+*.bak
+*.cache
+
+# ==========================================
+# OS-SPECIFIC
+# ==========================================
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Linux
+.directory
+
+# ==========================================
+# KEEP THESE DIRECTORIES
+# ==========================================
+# Need .gitkeep files to preserve empty directories
+!backend/uploads/.gitkeep
+!backend/demo_documents/.gitkeep
+!backend/models/.gitkeep
+!backend/models/embeddings/.gitkeep
+!ml/models/.gitkeep
+!ml/embeddings/.gitkeep

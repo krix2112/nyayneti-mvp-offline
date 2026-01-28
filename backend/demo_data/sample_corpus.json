@@ -1,0 +1,98 @@
+[
+    {
+        "doc_id": "case_001",
+        "case_name": "Y.S. Jagan Mohan Reddy v. CBI",
+        "court": "Supreme Court of India",
+        "year": 2013,
+        "citation": "(2013) 7 SCC 439",
+        "summary": "The Supreme Court held that while granting bail prior to conviction, the gravity of the offence, the magnitude of the amount involved, and the likelihood of the accused obstructing the ends of justice must be considered. Economic offences constitute a class apart and need to be visited with a different approach in the matter of bail.",
+        "tags": [
+            "Bail",
+            "Economic Offense",
+            "IPC 420",
+            "Corruption"
+        ],
+        "sections": [
+            "IPC 420",
+            "IPC 409",
+            "PC Act 13(2)"
+        ],
+        "case_type": "Criminal Appeal"
+    },
+    {
+        "doc_id": "case_002",
+        "case_name": "Sanjay Chandra v. CBI",
+        "court": "Supreme Court of India",
+        "year": 2012,
+        "citation": "(2012) 1 SCC 40",
+        "summary": "In this landmark judgment on the 2G Spectrum case, the Supreme Court reiterated that bail is the rule and jail is the exception. The Court emphasized that the object of bail is to secure the appearance of the accused person at his trial by reasonable amount of bail. Pre-trial detention should not be punitive.",
+        "tags": [
+            "Bail",
+            "White Collar Crime",
+            "Landmark",
+            "Personal Liberty"
+        ],
+        "sections": [
+            "IPC 420",
+            "IPC 120B"
+        ],
+        "case_type": "Criminal Appeal"
+    },
+    {
+        "doc_id": "case_003",
+        "case_name": "Arnesh Kumar v. State of Bihar",
+        "court": "Supreme Court of India",
+        "year": 2014,
+        "citation": "(2014) 8 SCC 273",
+        "summary": "The Supreme Court issued guidelines to prevent unnecessary arrests and casual detention. It held that arrest should not be mandatory in cases where the offence is punishable with imprisonment for a term which may be less than seven years. Police officers must issue a notice of appearance under Section 41A CrPC.",
+        "tags": [
+            "Arrest Guidelines",
+            "Matrimonial Cruelty",
+            "CrPC 41A"
+        ],
+        "sections": [
+            "IPC 498A",
+            "CrPC 41",
+            "CrPC 41A"
+        ],
+        "case_type": "Criminal Appeal"
+    },
+    {
+        "doc_id": "case_004",
+        "case_name": "Common Cause v. Union of India",
+        "court": "Supreme Court of India",
+        "year": 2018,
+        "citation": "(2018) 5 SCC 1",
+        "summary": "In this historic judgment, the Supreme Court recognized the right to die with dignity as a fundamental right. It legalized passive euthanasia and advanced medical directives (living wills), subject to strict guidelines and safeguards.",
+        "tags": [
+            "Constitutional Law",
+            "Right to Life",
+            "Euthanasia",
+            "Article 21"
+        ],
+        "sections": [
+            "Article 21",
+            "Constitution of India"
+        ],
+        "case_type": "Writ Petition"
+    },
+    {
+        "doc_id": "case_005",
+        "case_name": "Shreya Singhal v. Union of India",
+        "court": "Supreme Court of India",
+        "year": 2015,
+        "citation": "(2015) 5 SCC 1",
+        "summary": "The Supreme Court struck down Section 66A of the Information Technology Act, 2000, calling it unconstitutionally vague and overbroad. The Court held that the section violated the freedom of speech and expression guaranteed under Article 19(1)(a) of the Constitution.",
+        "tags": [
+            "Free Speech",
+            "IT Act",
+            "Constitution",
+            "Article 19"
+        ],
+        "sections": [
+            "IT Act 66A",
+            "Article 19(1)(a)"
+        ],
+        "case_type": "Writ Petition"
+    }
+]
