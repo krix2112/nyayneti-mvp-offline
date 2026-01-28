@@ -29,7 +29,9 @@
 
 <div align="center">
 
-https://github.com/user-attachments/assets/demo-video-here
+
+https://github.com/user-attachments/assets/465b61b9-4ddd-4274-9202-ef4897951512
+
 
 *Watch NyayNeti process a 150-page Supreme Court judgment in under 10 seconds — completely offline, with exact [Page, Para] citations*
 
@@ -784,8 +786,8 @@ We welcome contributions from the legal tech community! Here's how you can help:
 
 ### Ways to Contribute
 
-1. 🐛 **Report Bugs** - [Open an Issue](https://github.com/your-username/nyayneti/issues/new?template=bug_report.md)
-2. 💡 **Suggest Features** - [Feature Request](https://github.com/your-username/nyayneti/issues/new?template=feature_request.md)
+1. 🐛 **Report Bugs** - [Open an Issue](https://github.com/krix2112/nyayneti/issues/new?template=bug_report.md)
+2. 💡 **Suggest Features** - [Feature Request](https://github.com/krix2112/nyayneti/issues/new?template=feature_request.md)
 3. 📝 **Improve Documentation** - Fix typos, add examples, write tutorials
 4. 🔧 **Submit Code** - Fork, develop, and open a Pull Request!
 5. 🧪 **Test & Feedback** - Try the app, report edge cases
@@ -917,12 +919,11 @@ Thank you to the Indian legal community for invaluable feedback during developme
 
 | **Resource** | **Link** |
 |--------------|----------|
-| 📖 **Documentation** | [Read the Wiki](https://github.com/your-username/nyayneti/wiki) |
-| 🐛 **Bug Reports** | [GitHub Issues](https://github.com/your-username/nyayneti/issues) |
+| 📖 **Documentation** | [Read the Wiki](https://github.com/krix2112/nyayneti/wiki) |
+| 🐛 **Bug Reports** | [GitHub Issues](https://github.com/krix2112/nyayneti/issues) |
 | 💬 **Discussions** | [GitHub Discussions](https://github.com/your-username/nyayneti/discussions) |
-| 📧 **Email** | nyayneti@example.com |
-| 🐦 **Twitter** | [@NyayNeti](https://twitter.com/nyayneti) |
-| 💼 **LinkedIn** | [NyayNeti](https://linkedin.com/company/nyayneti) |
+| 📧 **Email** | Krish211207@gmail.com |
+| 💼 **LinkedIn** | https://www.linkedin.com/in/krishna-verma-2177b3394/ |
 
 </div>
 
