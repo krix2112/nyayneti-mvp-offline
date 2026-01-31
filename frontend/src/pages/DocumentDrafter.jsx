@@ -354,10 +354,10 @@ const DocumentDrafter = () => {
                                             <div className="size-2 rounded-full bg-green-500/50"></div>
                                         </div>
                                     </div>
-                                    <div className="flex-1 overflow-y-auto p-12 bg-white text-slate-900 font-serif leading-relaxed text-sm shadow-inner">
-                                        <pre className="whitespace-pre-wrap font-serif">
-                                            {result.draft_text}
-                                        </pre>
+                                    <div className="flex-1 overflow-y-auto p-12 bg-white text-slate-900 font-serif leading-relaxed text-sm shadow-inner overflow-x-hidden custom-scrollbar">
+                                        <div className="whitespace-pre-wrap font-serif">
+                                            {result.full_text}
+                                        </div>
                                     </div>
                                 </div>
                             </div>

@@ -123,8 +123,8 @@
     }
   },
   "Anuradha_Bhasin_vs_Union_Of_India_on_10_January_2020.PDF": {
-    "start_idx": 1209,
-    "end_idx": 1355,
+    "start_idx": 1355,
+    "end_idx": 1501,
     "num_chunks": 146,
     "metadata": {
       "filename": "Anuradha_Bhasin_vs_Union_Of_India_on_10_January_2020.PDF",
@@ -295,7 +295,7 @@
         "air_citations": 7,
         "scc_citations": 30
       },
-      "upload_date": "2026-01-31T14:13:10.188182",
+      "upload_date": "2026-01-31T14:34:38.643425",
       "total_pages": 1,
       "num_chunks": 146
     }

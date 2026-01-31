@@ -580,6 +580,10 @@ DRAFT DOCUMENT (Begin drafting now):"""
             
             logger.info(f"Generated document: {filepath}")
             
+            # Get citations again for metadata
+            sections = user_inputs.get('sections', [])
+            citations = self._get_relevant_citations(sections)
+            
             return {
                 "success": True,
                 "document_id": doc_id,
@@ -587,6 +591,7 @@ DRAFT DOCUMENT (Begin drafting now):"""
                 "filepath": str(filepath),
                 "preview_text": final_document[:500] + "..." if len(final_document) > 500 else final_document,
                 "full_text": final_document,
+                "citations": citations,
                 "template_type": template_type,
                 "generation_time": datetime.now().isoformat()
             }
