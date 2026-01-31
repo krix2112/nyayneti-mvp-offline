@@ -42,28 +42,51 @@ def extract_text_from_pdf(path: str) -> str:
     return output.getvalue()
 
 
-def split_text_into_chunks(text: str, max_chars: int = 1500) -> List[str]:
+def split_text_into_chunks(text: str, max_chars: int = 1500, overlap: int = 200) -> List[str]:
     """
-    Naive text chunking by characters with paragraph boundary awareness.
+    Intelligent Semantic Chunking for Legal Documents.
+    Recursively splits text by semantic boundaries (\n\n, \n, . , ;)
+    while maintaining a sliding window overlap for context flow.
     """
-    paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
-    chunks: List[str] = []
-    current: List[str] = []
-    current_len = 0
+    def _recursive_split(current_text: str, separators: List[str]) -> List[str]:
+        if len(current_text) <= max_chars:
+            return [current_text]
+        
+        if not separators:
+            # Hard break if no separators left
+            return [current_text[i:i + max_chars] for i in range(0, len(current_text), max_chars - overlap)]
 
-    for p in paragraphs:
-        if current_len + len(p) > max_chars and current:
-            chunks.append("\n\n".join(current))
-            current = [p]
-            current_len = len(p)
-        else:
-            current.append(p)
-            current_len += len(p)
+        sep = separators[0]
+        nodes = current_text.split(sep)
+        
+        final_chunks = []
+        current_buffer = ""
+        
+        for node in nodes:
+            # If a single node is too big, recurse on it with the remaining separators
+            if len(node) > max_chars:
+                if current_buffer:
+                    final_chunks.append(current_buffer.strip())
+                    current_buffer = ""
+                final_chunks.extend(_recursive_split(node, separators[1:]))
+            # If adding the node exceeds max_chars, save buffer and start new
+            elif len(current_buffer) + len(node) + len(sep) > max_chars:
+                if current_buffer:
+                    final_chunks.append(current_buffer.strip())
+                # Start new buffer with overlap from previous if possible
+                overlap_text = current_buffer[-(overlap):] if len(current_buffer) > overlap else ""
+                current_buffer = overlap_text + sep + node if overlap_text else node
+            else:
+                current_buffer = (current_buffer + sep + node) if current_buffer else node
+        
+        if current_buffer:
+            final_chunks.append(current_buffer.strip())
+            
+        return final_chunks
 
-    if current:
-        chunks.append("\n\n".join(current))
-
-    return chunks
+    # Delimiters in order of semantic importance
+    separators = ["\n\n", "\n", ". ", "; ", ", "]
+    return _recursive_split(text, separators)
 
 
 def extract_text_with_coordinates(pdf_path: str) -> List[Dict[str, Any]]:

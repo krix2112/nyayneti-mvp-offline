@@ -37,10 +37,51 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler(str(LOG_FILE)),
-        logging.StreamHandler()  # Also print to console
+        logging.StreamHandler()
     ]
 )
 logger = logging.getLogger(__name__)
+
+# Force Werkzeug to log to console with our level
+import logging as py_logging
+py_logging.getLogger('werkzeug').setLevel(py_logging.INFO)
+py_logging.getLogger('werkzeug').addHandler(py_logging.StreamHandler())
+
+# Enhanced Terminal Logging
+class ColoredFormatter(logging.Formatter):
+    """Custom formatter for colored terminal output"""
+    grey = "\x1b[38;20m"
+    blue = "\x1b[34;20m"
+    yellow = "\x1b[33;20m"
+    red = "\x1b[31;20m"
+    bold_red = "\x1b[31;1m"
+    reset = "\x1b[0m"
+    format_str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+    def format(self, record):
+        log_fmt = self.format_str
+        if record.levelno == logging.DEBUG:
+            log_fmt = self.grey + self.format_str + self.reset
+        elif record.levelno == logging.INFO:
+            log_fmt = self.blue + self.format_str + self.reset
+        elif record.levelno == logging.WARNING:
+            log_fmt = self.yellow + self.format_str + self.reset
+        elif record.levelno == logging.ERROR:
+            log_fmt = self.red + self.format_str + self.reset
+        elif record.levelno == logging.CRITICAL:
+            log_fmt = self.bold_red + self.format_str + self.reset
+        formatter = logging.Formatter(log_fmt, datefmt='%H:%M:%S')
+        return formatter.format(record)
+
+# Update handler to use colored formatter
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(ColoredFormatter())
+root_logger = logging.getLogger()
+root_logger.setLevel(logging.INFO)
+root_logger.handlers = [console_handler, logging.FileHandler(str(LOG_FILE))]
+
+# Ensure specific engines also log clearly
+logging.getLogger('flask_cors').setLevel(logging.INFO)
 
 
 class NyayNetiJSONProvider(DefaultJSONProvider):
@@ -69,6 +110,9 @@ def create_app() -> Flask:
     app.json = NyayNetiJSONProvider(app)
     CORS(app)
 
+    print("\n" + "="*50)
+    print("🚀 STARTING NYAYNETI BACKEND INTELLIGENCE SYSTEM")
+    print("="*50 + "\n")
     ensure_dirs()
     settings = get_settings()
 
@@ -79,31 +123,79 @@ def create_app() -> Flask:
     try:
         logger.info(f"Initializing vector store from {settings.EMBEDDING_DIR}")
         vector_store = PersistentVectorStore(storage_path=settings.EMBEDDING_DIR)
-        logger.info("Vector store initialized successfully")
-        
-        from sentence_transformers import SentenceTransformer
-        logger.info(f"Loading embedding model from: {settings.EMBEDDING_MODEL_PATH}")
-        embedding_model = SentenceTransformer(settings.EMBEDDING_MODEL_PATH)
-        logger.info("Embedding model loaded successfully")
+        logger.info("✅ Vector store initialized")
     except Exception as e:
-        logger.error(f"Failed to initialize vector store or embeddings: {e}", exc_info=True)
-        # Don't crash - set to None and handle gracefully in endpoints
+        logger.error(f"Failed to initialize vector store: {e}")
+
+    # Lazy Loading Wrapper for Embedding Model
+    class ModelManager:
+        def __init__(self, settings):
+            self.settings = settings
+            self._model = None
+        
+        def get_model(self):
+            if self._model is None:
+                from sentence_transformers import SentenceTransformer
+                logger.info(f"⏳ Lazy-loading embedding model: {self.settings.EMBEDDING_MODEL_PATH}...")
+                self._model = SentenceTransformer(self.settings.EMBEDDING_MODEL_PATH)
+                logger.info("✅ Embedding model loaded (Lazy)")
+            return self._model
+
+    model_manager = ModelManager(settings)
 
     # Keep existing LLM engine for compare-pdf functionality
     llm_engine = LLMEngine(
         model_name="deepseek-r1:1.5b",
         api_key=None,
         embedding_dir=settings.EMBEDDING_DIR,
-        model_path=settings.LLM_MODEL_PATH,
+        model_path=None, # DISABLED: Forcing Ollama (deepseek-r1:1.5b) for maximum speed
         embedding_model=settings.EMBEDDING_MODEL_PATH,
-        demo_mode=False,
-        ollama_model="deepseek-r1:1.5b",
+        context_length=settings.LLM_CONTEXT_LENGTH,
+        n_threads=settings.LLM_THREADS,
+        gpu_layers=settings.LLM_GPU_LAYERS,
+        ollama_model="deepseek-r1:1.5b", # Reverted to available 1.5B model for stability
         vector_store=vector_store,
     )
+
+    # Warm up the LLM engine for faster first response
+    print("🔥 Warming up AI engine for faster responses...")
+    try:
+        # Pre-load models in background
+        import threading
+        def warmup_task():
+            llm_engine._ensure_models_loaded()
+            print("✅ AI engine warmed up!")
+        warmup_thread = threading.Thread(target=warmup_task, daemon=True)
+        warmup_thread.start()
+    except Exception as e:
+        logger.warning(f"Warmup failed: {e}")
 
     comparator = Comparator(llm_engine=llm_engine)
     drafter = get_document_drafter(llm_engine=llm_engine)
     analyzer = get_strength_analyzer(llm_engine=llm_engine)
+
+    analyzer = get_strength_analyzer(llm_engine=llm_engine)
+
+    # --- GLOBAL ERROR HANDLERS ---
+    @app.errorhandler(Exception)
+    def handle_exception(e):
+        """Global exception handler for cleaner terminal logs"""
+        import traceback
+        # format error
+        tb = traceback.format_exc()
+        logger.error(f"🔥 CRITICAL SERVER ERROR: {str(e)}\n{tb}")
+        return jsonify({"error": "Internal Server Error", "details": str(e)}), 500
+
+    @app.before_request
+    def log_request_info():
+        if request.path != "/api/health" and not request.path.startswith("/static"):
+             logger.info(f"📨 [{request.method}] {request.path}")
+
+    @app.after_request
+    def log_response_info(response):
+        if request.path != "/api/health" and not request.path.startswith("/static"):
+             logger.info(f"📤 Status: {response.status_code}")
+        return response
 
     # --- API ROUTES ---
     @app.route("/api/health")
@@ -133,15 +225,19 @@ def create_app() -> Flask:
             import traceback
             import uuid
             try:
+                print(f"\n📤 [UPLOAD] Received file: {file.filename}")
                 logger.info(f"📤 Upload started for: {file.filename}")
                 
                 # Step 1: Extract text
+                print(f"📄 [UPLOAD] Step 1: Extracting text from PDF...")
                 yield f"data: {json.dumps({'progress': 10, 'status': 'Extracting text from PDF...'})}\n\n"
                 time.sleep(0.1)
                 text = extract_text_from_pdf(path)
+                print(f"✅ [UPLOAD] Text extracted: {len(text)} characters")
                 logger.info(f"✅ Text extracted: {len(text)} characters")
                 
                 # Step 2: Split into chunks with page info and extract citations
+                print(f"🧠 [UPLOAD] Step 2: Processing structure & citations...")
                 yield f"data: {json.dumps({'progress': 25, 'status': 'Processing PDF structure and citations...'})}\n\n"
                 time.sleep(0.1)
                 
@@ -156,11 +252,13 @@ def create_app() -> Flask:
                 logger.info(f"Created {len(chunks)} chunks with page mapping")
                 
                 # Step 3: Generate embeddings
-                yield f"data: {json.dumps({'progress': 50, 'status': 'Generating AI embeddings (this may take a moment)...'})}\n\n"
-                time.sleep(0.1)
+                # Lazy load here
+                embedding_model = model_manager.get_model()
                 
                 if embedding_model is None:
-                    raise Exception("Embedding model not initialized")
+                    raise Exception("Embedding model initialization failed")
+                
+                print(f"🧩 [UPLOAD] Step 3: Generating {len(chunks)} semantic embeddings...")
                 
                 embeddings = embedding_model.encode(
                     chunks,
@@ -202,6 +300,7 @@ def create_app() -> Flask:
                     chunk_metadata=chunk_meta_list
                 )
                 
+                print(f"🎉 [UPLOAD] Success: '{file.filename}' is fully indexed and ready for AI analysis.")
                 logger.info(f"Successfully indexed document: {result}")
                 
                 # Also index with llm_engine for backward compatibility
@@ -261,7 +360,6 @@ def create_app() -> Flask:
                 yield f"ERROR: {error_msg}"
             return Response(generate_error(), mimetype='text/event-stream')
 
-        from flask import Response
         return Response(llm_engine.answer_question_stream(q, doc_id=doc_id), mimetype='text/event-stream')
 
     @app.route("/api/compare", methods=["POST"])
@@ -466,24 +564,27 @@ def create_app() -> Flask:
             return jsonify({"error": "doc_id and template_type required"}), 400
             
         # Get document text
-        doc = next((d for d in vector_store.documents if d['doc_id'] == doc_id), None)
-        if not doc:
+        doc_chunks = [ch for ch in vector_store.documents if ch.doc_id == doc_id]
+        
+        if not doc_chunks:
             # Try reloading index if not found
             if hasattr(llm_engine, '_load_index'):
                 chunks = llm_engine._load_index()
-                doc_chunks = [ch for ch in chunks if ch.doc_id == doc_id]
+                # Determine if chunks are dicts or objects
+                doc_chunks = []
+                for ch in chunks:
+                    c_id = ch.get('doc_id') if isinstance(ch, dict) else ch.doc_id
+                    if c_id == doc_id:
+                        doc_chunks.append(ch)
+
                 if doc_chunks:
-                    text = "\n".join([ch.text for ch in doc_chunks])
+                    text = "\n".join([ch.get('text') if isinstance(ch, dict) else ch.text for ch in doc_chunks])
                 else:
                     return jsonify({"error": "Document not found"}), 404
             else:
                 return jsonify({"error": "Document not found"}), 404
         else:
-            text = doc.get('text', "")
-            if not text:
-                # Reconstruct text from chunks if full text not in meta
-                doc_chunks = [ch for ch in vector_store.documents if ch['doc_id'] == doc_id]
-                text = "\n".join([ch['text'] for ch in doc_chunks])
+            text = "\n".join([ch.text for ch in doc_chunks])
 
         template = drafter.get_template(template_type)
         if not template:
@@ -502,13 +603,16 @@ def create_app() -> Flask:
         """Analyze legal document strength"""
         doc_id = request.json.get("doc_id")
         text = request.json.get("text")
+
+        if vector_store is None:
+            return jsonify({'error': 'Vector store not available'}), 500
         
         if doc_id:
-            # Find document text from vector store
-            doc = next((d for d in vector_store.documents if d['doc_id'] == doc_id), None)
-            if not doc:
+            # Find document text from vector store chunks
+            doc_chunks = [d for d in vector_store.documents if d.doc_id == doc_id]
+            if not doc_chunks:
                 return jsonify({"error": "Document not found"}), 404
-            text = doc['text']
+            text = "\n".join([d.text for d in doc_chunks])
         
         if not text:
             return jsonify({"error": "Text or doc_id required"}), 400
@@ -530,9 +634,17 @@ def create_app() -> Flask:
         all_docs = []
         doc_ids = set()
         for doc in vector_store.documents:
-            if doc['doc_id'] not in doc_ids:
-                all_docs.append(doc)
-                doc_ids.add(doc['doc_id'])
+            # Handle both dict (legacy) and DocumentChunk object
+            d_id = doc.doc_id if hasattr(doc, 'doc_id') else doc.get('doc_id')
+            
+            if d_id not in doc_ids:
+                # Reconstruct full text for this doc
+                doc_chunks = [d for d in vector_store.documents if (d.doc_id if hasattr(d, 'doc_id') else d.get('doc_id')) == d_id]
+                full_text = "\n".join([d.text if hasattr(d, 'text') else d.get('text') for d in doc_chunks])
+                
+                # Create a dict representation for citation extractor
+                all_docs.append({'doc_id': d_id, 'text': full_text})
+                doc_ids.add(d_id)
                 
         results = citation_extractor.search_documents_by_citation(all_docs, citation, citation_type)
         return jsonify({"results": results})
@@ -540,12 +652,19 @@ def create_app() -> Flask:
     @app.route("/api/citations/<doc_id>", methods=["GET"])
     def get_doc_citations(doc_id):
         """Get all citations for a specific document"""
-        doc = next((d for d in vector_store.documents if d['doc_id'] == doc_id), None)
-        if not doc:
+        if vector_store is None:
+            return jsonify({'error': 'Vector store not available'}), 500
+
+        # Reconstruct full document text from chunks
+        doc_chunks = [d for d in vector_store.documents if d.doc_id == doc_id]
+        
+        if not doc_chunks:
             return jsonify({"error": "Document not found"}), 404
             
-        citations = citation_extractor.extract_all_citations(doc['text'])
-        counts = citation_extractor.count_citations(doc['text'])
+        full_text = "\n".join([d.text for d in doc_chunks])
+            
+        citations = citation_extractor.extract_all_citations(full_text)
+        counts = citation_extractor.count_citations(full_text)
         return jsonify({"citations": citations, "counts": counts})
 
     @app.route("/api/document/<doc_id>/pdf", methods=["GET"])

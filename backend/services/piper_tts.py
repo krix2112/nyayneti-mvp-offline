@@ -1,128 +1,88 @@
 import os
 import logging
-import json
 import time
-import requests
+import uuid
 from pathlib import Path
 from typing import Optional, Tuple
-import wave
-import numpy as np
 
 logger = logging.getLogger(__name__)
 
-class PiperTTS:
+class Pyttsx3TTS:
     """
-    Offline Neural Text-to-Speech using Piper (ONNX).
-    Supports high-quality English and Hindi voices.
+    Offline Text-to-Speech using system native voices (SAPI5/nsss/espeak).
+    Replaces Piper for better compatibility and valid offline support.
     """
     
-    VOICES = {
-        "en": {
-            "model_url": "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/amy/low/en_US-amy-low.onnx",
-            "config_url": "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/amy/low/en_US-amy-low.onnx.json",
-            "filename": "en_US-amy-low.onnx"
-        },
-        "hi": {
-            "model_url": "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/hi/hi_IN/gajendra/medium/hi_IN-gajendra-medium.onnx",
-            "config_url": "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/hi/hi_IN/gajendra/medium/hi_IN-gajendra-medium.onnx.json",
-            "filename": "hi_IN-gajendra-medium.onnx"
-        }
-    }
-
-    def __init__(self, models_dir: str = "models/tts"):
-        self.models_dir = Path(models_dir)
-        self.models_dir.mkdir(parents=True, exist_ok=True)
-        self.voices = {} # Cache for loaded PiperVoice objects
-        self._piper_module = None
-
-    def _get_piper(self):
-        """Lazy load piper module"""
-        if self._piper_module is None:
-            try:
-                from piper.voice import PiperVoice
-                self._piper_module = PiperVoice
-            except ImportError:
-                logger.error("piper-tts not installed")
-                return None
-        return self._piper_module
-
-    def _ensure_model(self, lang: str) -> Tuple[bool, Optional[str]]:
-        """Download model and config if not present"""
-        if lang not in self.VOICES:
-            return False, f"Unsupported language: {lang}"
-        
-        v_info = self.VOICES[lang]
-        model_path = self.models_dir / v_info["filename"]
-        config_path = self.models_dir / f"{v_info['filename']}.json"
-        
-        if not model_path.exists() or not config_path.exists():
-            logger.info(f"[VOICE] Downloading Piper model for {lang}...")
-            try:
-                # Download model
-                r = requests.get(v_info["model_url"], stream=True)
-                with open(model_path, 'wb') as f:
-                    for chunk in r.iter_content(chunk_size=8192):
-                        f.write(chunk)
-                
-                # Download config
-                r = requests.get(v_info["config_url"])
-                with open(config_path, 'wb') as f:
-                    f.write(r.content)
-                
-                logger.info(f"[VOICE] Downloaded Piper model: {v_info['filename']}")
-            except Exception as e:
-                logger.error(f"[VOICE] Failed to download Piper model: {e}")
-                return False, str(e)
-                
-        return True, str(model_path)
+    def __init__(self):
+        self._engine = None
 
     def synthesize(self, text: str, lang: str = "en", output_path: str = None) -> Tuple[bool, str]:
         """
         Synthesize text to a WAV file.
         """
-        piper_class = self._get_piper()
-        if not piper_class:
-            return False, "Piper module not available"
-
-        success, model_path_or_err = self._ensure_model(lang)
-        if not success:
-            return False, model_path_or_err
-
-        model_path = model_path_or_err
-        config_path = f"{model_path}.json"
-
         try:
-            if lang not in self.voices:
-                logger.info(f"[VOICE] Loading Piper voice: {lang}")
-                self.voices[lang] = piper_class.load(model_path, config_path=config_path, use_cuda=False)
+            import pyttsx3
+            import pythoncom
+            # CRITICAL: Initialize COM for the current thread (Flask uses threads)
+            pythoncom.CoInitialize()
             
-            voice = self.voices[lang]
-            
+            engine = pyttsx3.init()
+            engine.setProperty('rate', 170) # Optimal legal reading speed
+            engine.setProperty('volume', 1.0)
+
             if not output_path:
                 import tempfile
-                from datetime import datetime
                 temp_dir = tempfile.gettempdir()
-                output_path = os.path.join(temp_dir, f"tts_output_{datetime.now().strftime('%Y%m%d_%H%M%S')}.wav")
+                output_path = os.path.join(temp_dir, f"tts_{uuid.uuid4().hex}.wav")
 
-            start_time = time.time()
-            with wave.open(output_path, "wb") as wav_file:
-                voice.synthesize(text, wav_file)
+            logger.info(f"[VOICE] Synthesizing: {text[:30]}...")
             
-            logger.info(f"[VOICE] TTS synth complete in {time.time() - start_time:.2f}s: {output_path}")
-            return True, output_path
+            # Select voice based on lang
+            voices = engine.getProperty('voices')
+            # Try to find a matching voice
+            selected_voice = None
+            if lang == 'hi':
+                # detailed search for Hindi
+                for v in voices:
+                    if 'hindi' in v.name.lower() or 'hi-in' in v.id.lower():
+                        selected_voice = v.id
+                        break
+            
+            if not selected_voice and voices:
+                 # Default to first available if language not found
+                 selected_voice = voices[0].id
+                 
+            if selected_voice:
+                engine.setProperty('voice', selected_voice)
+
+            # Saving to file
+            logger.info(f"[VOICE] Saving audio to: {output_path}")
+            engine.save_to_file(text, output_path)
+            engine.runAndWait()
+            
+            # small delay to ensure file handle is released/flushed
+            time.sleep(0.5)
+            
+            if os.path.exists(output_path):
+                f_size = os.path.getsize(output_path)
+                logger.info(f"[VOICE] TTS complete: {output_path} (Size: {f_size} bytes)")
+                if f_size > 44: # WAV header is 44 bytes. Anything larger means actual audio.
+                    return True, output_path
+                else:
+                    return False, f"File generated but empty ({f_size} bytes)"
+            else:
+                logger.error(f"[VOICE] File NOT found after synthesis: {output_path}")
+                return False, "File generation failed - file not found"
 
         except Exception as e:
-            logger.error(f"[VOICE] TTS synthesis failed: {e}", exc_info=True)
-            return False, str(e)
+            logger.error(f"[VOICE] TTS failed: {e}", exc_info=True)
+            return False, f"Exception during synthesis: {str(e)}"
 
-# Singleton instance
+# Singleton
 _tts_engine = None
 
 def get_tts_engine():
     global _tts_engine
     if _tts_engine is None:
-        # Resolve path relative to backend root
-        backend_root = Path(__file__).parent.parent
-        models_dir = backend_root / "models" / "tts"
-        _tts_engine = PiperTTS(models_dir=str(models_dir))
+        _tts_engine = Pyttsx3TTS()
     return _tts_engine

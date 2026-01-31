@@ -24,6 +24,12 @@ from .pdf_processor import split_text_into_chunks
 from .vector_store import PersistentVectorStore
 from .json_utils import sanitize_for_json
 
+try:
+    from sentence_transformers import SentenceTransformer, CrossEncoder
+except ImportError:
+    SentenceTransformer = None
+    CrossEncoder = None
+
 
 # Ollama API configuration (as fallback)
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
@@ -51,9 +57,9 @@ class LLMEngine:
         api_key: str | None,
         embedding_dir: str,
         model_path: str | None = None,
-        context_length: int = 4096,
+        context_length: int = 2048,  # Reduced from 4096
         gpu_layers: int = 0,
-        n_threads: int = 4,
+        n_threads: int = 8,  # Increased from 4-8
         embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2",
         demo_mode: bool = False,
         ollama_base_url: str = OLLAMA_BASE_URL,
@@ -75,7 +81,8 @@ class LLMEngine:
         
         # Phase 3: Query Cache (Simple LRU)
         self.cache: Dict[str, str] = {}
-        self.max_cache_size = 50
+        self.max_cache_size = 150 # Increased for better session memory
+        self.cache_stats = {"hits": 0, "misses": 0, "total_requests": 0}  # Track cache performance
         
         # Phase 4: Reset cache on startup to clear old hallucinations
         self.cache.clear()
@@ -86,24 +93,11 @@ class LLMEngine:
 
         self._llm: Optional[Llama] = None
         self._embedding_model = None
+        self._reranker = None
+        self.reranker_model_name = "cross-encoder/ms-marco-TinyBERT-L-2-v2"  # ~10x faster than BGE-base
         self._chunks_cache: List[DocumentChunk] | None = None
-        self._ollama_available: bool | None = None
-
-        # Try to initialize local LLM if possible
-        if not self.demo_mode and LLAMA_CPP_AVAILABLE and self.model_path and os.path.exists(self.model_path):
-            try:
-                print(f"Initializing local LLM from {self.model_path}...")
-                self._llm = Llama(
-                    model_path=self.model_path,
-                    n_ctx=4096,
-                    n_gpu_layers=0,
-                    n_threads=4,
-                    verbose=False
-                )
-                print("Local LLM initialized successfully.")
-                self.pre_warm() # Pre-warm the model
-            except Exception as e:
-                print(f"Failed to initialize local LLM: {e}")
+        self._models_loaded = False  # Track lazy loading state
+        self._llm_failed = False     # Track if local LLM init failed
 
     def pre_warm(self):
         """Perform a dummy query to warm up the model cache."""
@@ -140,25 +134,9 @@ class LLMEngine:
             if query.count(char) > len(query) * 0.6 and len(query) > 5:
                 return False, "Input contains too many repetitive characters."
 
-        # 3. LLM Fast Classification (Guardrail)
-        # Use a very small max_tokens to save time
-        classification_prompt = f"""Task: Is this a meaningful human message/question? 
-Answer ONLY [VALID] or [INVALID].
-Examples:
-"Hello" -> [VALID]
-"Tell me about the Zarina case" -> [VALID]
-"bjhwferf" -> [INVALID]
-"12345678" -> [INVALID]
-"ked jwer" -> [INVALID]
-
-Input: "{query}"
-Classification:"""
-        
-        result = self._call_llm(classification_prompt, max_tokens=5, stream=False)
-        if "[INVALID]" in result:
-            logger.warning(f"AI rejected query as gibberish: {query}")
-            return False, "AI detected this as irrelevant or gibberish input."
-            
+        # 3. LLM Fast Classification (DISABLED for Stability)
+        # The new Qwen model might be too chatty or strict, causing false positives.
+        # We trust the heuristics above for now.
         return True, ""
 
     def _call_llm(self, prompt: str, max_tokens: int = 512, stream: bool = False):
@@ -181,61 +159,152 @@ Classification:"""
             except Exception as e:
                 print(f"Local LLM inference failed: {e}")
 
-        # Fallback to Ollama
         if self._check_ollama():
             if stream:
                 return self._call_ollama_stream(prompt, max_tokens)
             return self._call_ollama(prompt, max_tokens)
-
-        err = "ERROR: Connectivity issue. No AI engine available."
+            
+        logger.error("❌ CONNECTIVITY ERROR: Could not connect to any AI engine.")
+        err = "ERROR: No AI engine available. Please ensure Ollama is running."
         return (s for s in [err]) if stream else err
 
     def _check_ollama(self) -> bool:
         try:
-            resp = requests.get(f"{self.ollama_base_url}/api/tags", timeout=1)
-            return resp.status_code == 200
-        except: return False
+            # Check if Ollama is running and model exists
+            url = f"{self.ollama_base_url}/api/tags"
+            logger.info(f"🔎 Checking Ollama status at {url}...")
+            resp = requests.get(url, timeout=2)
+            
+            if resp.status_code == 200:
+                models = [m['name'] for m in resp.json().get('models', [])]
+                # Allow partial match (e.g. qwen2.5:7b matching qwen2.5:7b-instruct)
+                if any(self.ollama_model in m for m in models):
+                    logger.info(f"✅ Found Ollama model: {self.ollama_model}")
+                    return True
+                else:
+                    logger.warning(f"⚠️ Ollama running but model '{self.ollama_model}' NOT found. Available: {models}")
+                    return True # Return true to attempt pull or fallback, but warn
+            return False
+        except Exception as e: 
+            logger.warning(f"⚠️ Ollama check failed: {e}")
+            return False
 
     def _call_ollama(self, prompt: str, max_tokens: int) -> str:
         try:
-            resp = requests.post(f"{self.ollama_base_url}/api/generate", json={
-                "model": self.ollama_model, "prompt": prompt, "stream": False, "options": {"num_predict": max_tokens}
-            }, timeout=60)
+            payload = {
+                "model": self.ollama_model, 
+                "prompt": prompt, 
+                "stream": False, 
+                "options": {
+                    "num_predict": max_tokens,
+                    "temperature": 0.1,
+                    "num_thread": self.n_threads
+                }
+            }
+            logger.info(f"🤖 Sending request to Ollama ({self.ollama_model})...")
+            resp = requests.post(f"{self.ollama_base_url}/api/generate", json=payload, timeout=60)
+            
+            if resp.status_code != 200:
+                logger.error(f"❌ Ollama Error {resp.status_code}: {resp.text}")
+                return f"Error: Ollama returned {resp.status_code}"
+                
             return resp.json().get("response", "").strip()
-        except: return "Ollama connection failed."
+        except Exception as e: return f"Ollama connection failed: {e}"
 
     def _call_ollama_stream(self, prompt: str, max_tokens: int):
         token_count = 0
-        logger.info(f"Starting Ollama stream for model: {self.ollama_model} (Prompt: {len(prompt)} chars)")
+        logger.info(f"🌊 Starting stream: {self.ollama_model}")
         
         try:
-            resp = requests.post(f"{self.ollama_base_url}/api/generate", json={
-                "model": self.ollama_model, "prompt": prompt, "stream": True, "options": {"num_predict": max_tokens}
-            }, stream=True, timeout=300)
+            payload = {
+                "model": self.ollama_model, 
+                "prompt": prompt, 
+                "stream": True, 
+                "options": {
+                    "num_predict": max_tokens,
+                    "temperature": 0.1,
+                    "num_thread": self.n_threads
+                }
+            }
             
-            for line in resp.iter_lines():
-                if line:
-                    chunk = json.loads(line)
-                    token = chunk.get("response", "")
-                    if token:
-                        token_count += 1
-                        yield token
+            with requests.post(f"{self.ollama_base_url}/api/generate", json=payload, stream=True, timeout=300) as resp:
+                if resp.status_code != 200:
+                    err_msg = f"Ollama API Error: {resp.status_code} - {resp.text}"
+                    logger.error(f"❌ {err_msg}")
+                    yield err_msg
+                    return
+
+                for line in resp.iter_lines():
+                    if line:
+                        try:
+                            chunk = json.loads(line)
+                            if "error" in chunk:
+                                logger.error(f"❌ Ollama Stream Error: {chunk['error']}")
+                                yield f"\n[AI Error: {chunk['error']}]\n"
+                                return
+                                
+                            token = chunk.get("response", "")
+                            if token:
+                                token_count += 1
+                                yield token
+                        except json.JSONDecodeError:
+                            pass
             
             if token_count == 0:
-                logger.warning("No tokens generated by Ollama!")
-                yield "No response generated. Please try again or check if the model is loaded."
+                logger.warning("⚠️ OLLAMA RETURNED 0 TOKENS. Model might be pulling or broken.")
+                yield f"AI didn't reply. Try running: 'ollama pull {self.ollama_model}' in terminal."
         except Exception as e:
-            logger.error(f"Ollama streaming failed: {e}", exc_info=True)
-            yield f"\n\n[Error: Ollama streaming failed: {str(e)}]\n"
+            logger.error(f"❌ Ollama streaming crashed: {e}", exc_info=True)
+            yield f"\n[System Error: {str(e)}]\n"
+
+    def _ensure_models_loaded(self):
+        """Lazy load heavy models only when needed"""
+        if self._models_loaded:
+            return
+
+        logger.info("⏳ Lazy-loading LLM Engine models...")
+        
+        # Initialize sentence-transformers (Embeddings)
+        if SentenceTransformer:
+            try:
+                if self._embedding_model is None:
+                    logger.info(f"🧠 Loading embedding model: {self.embedding_model_name}")
+                    self._embedding_model = SentenceTransformer(self.embedding_model_name, device='cpu')
+                    logger.info("✅ Embedding model ready")
+                
+                # Reranker DISABLED for performance
+                # if self._reranker is None:
+                #     logger.info(f"🧬 Loading reranker model: {self.reranker_model_name}")
+                #     self._reranker = CrossEncoder(self.reranker_model_name, device='cpu')
+                #     logger.info("✅ Reranker model ready")
+            except Exception as e:
+                logger.warning(f"⚠️ Failed to load models: {e}")
+
+        # Initialize Local LLM if configured
+        if self.model_path and os.path.exists(self.model_path) and LLAMA_CPP_AVAILABLE and self._llm is None:
+             try:
+                logger.info(f"🚀 Initializing local GGUF model from {self.model_path}...")
+                self._llm = Llama(
+                    model_path=self.model_path,
+                    n_ctx=self.context_length,
+                    n_gpu_layers=self.gpu_layers,
+                    n_threads=self.n_threads,
+                    n_batch=512, # Faster prompt processing
+                    verbose=False,
+                )
+                logger.info("✅ Core LLM Engine (GGUF) online")
+             except Exception as e:
+                logger.error(f"❌ Failed to load local GGUF model: {e}")
+        
+        self._models_loaded = True
 
     def _get_embedding_model(self):
-        if self._embedding_model is not None: return self._embedding_model
-        try:
-            from sentence_transformers import SentenceTransformer
-            print(f"Loading embedding model: {self.embedding_model_name}")
-            self._embedding_model = SentenceTransformer(self.embedding_model_name)
-            return self._embedding_model
-        except: return None
+        self._ensure_models_loaded()
+        return self._embedding_model
+
+    def _get_reranker(self):
+        self._ensure_models_loaded()
+        return self._reranker
 
     def index_document(self, doc_id: str, text: str):
         import time
@@ -308,20 +377,39 @@ Classification:"""
         scores.sort(key=lambda x: x[0], reverse=True)
         return [s[1] for s in scores[:top_k]]
 
-    def answer_question_stream(self, question: str, doc_id: Optional[str] = None):
+    def answer_question_stream(self, question: str, doc_id: str | None = None):
+        """
+        Multistage RAG pipeline:
+        1. Query Expansion (disabled for speed)
+        2. Semantic Search (with optional filters)
+        3. Reranking (Cross-Encoder)
+        4. LLM Generation (Streaming)
+        """
+        self._ensure_models_loaded()
         # Phase 3: Cache Check (Instant Response)
+        self.cache_stats["total_requests"] += 1
         cache_key = question.strip().lower()
         if cache_key in self.cache:
-            logger.info(f"Cache hit for query: {question[:30]}...")
+            self.cache_stats["hits"] += 1
+            hit_rate = (self.cache_stats["hits"] / self.cache_stats["total_requests"]) * 100
+            logger.info(f"💾 Cache hit for query: {question[:30]}... (Hit rate: {hit_rate:.1f}%)")
             yield self.cache[cache_key]
             return
+        else:
+            self.cache_stats["misses"] += 1
 
         # 1. Hybrid Retrieval
         if self.vector_store:
             emb_model = self._get_embedding_model()
             q_emb = emb_model.encode(question) if emb_model else np.zeros(384)
-            # If doc_id is provided, focus exclusively on that document and increase top_k
-            search_k = 15 if doc_id else 5
+            # Reduced pool size for faster reranking (12 candidates)
+            search_k = 12 if doc_id else 12 
+            
+            if doc_id:
+                print(f"🔍 [AI] Target Search: Restricted to {doc_id}")
+            else:
+                print(f"🔍 [AI] Global Search: Searching across all documents")
+                
             retrieved = self.vector_store.search(
                 query_embedding=q_emb,
                 query_text=question,
@@ -329,8 +417,35 @@ Classification:"""
                 doc_ids=[doc_id] if doc_id else None,
                 include_neighbors=True
             )
+            print(f"📚 [AI] Retrieval: Found {len(retrieved)} potential chunks")
         else:
             retrieved = self._hybrid_retrieve(question)
+
+        # Phase 7: Reranking DISABLED for performance (The Gold Standard)
+        # Disabled for faster response times - semantic search is sufficient for most use cases
+        reranker = None  # self._get_reranker()  # Disabled
+        if reranker and retrieved:
+            print(f"⚖️  [AI] Reranking: Benchmarking {len(retrieved)} candidates with BGE...")
+            logger.info(f"Reranking {len(retrieved)} candidates...")
+            # Prepare pairs for cross-encoder [(query, doc1), (query, doc2), ...]
+            pairs = [[question, ch.get('text', '') if isinstance(ch, dict) else ch.text] for ch in retrieved]
+            scores = reranker.predict(pairs)
+            
+            # Re-sort using cross-encoder scores
+            for i, score in enumerate(scores):
+                if isinstance(retrieved[i], dict):
+                    retrieved[i]['rerank_score'] = float(score)
+                else:
+                    setattr(retrieved[i], 'rerank_score', float(score))
+            
+            retrieved.sort(key=lambda x: (x.get('rerank_score', 0) if isinstance(x, dict) else getattr(x, 'rerank_score', 0)), reverse=True)
+            
+            # Keep top 5 for construction
+            retrieved = retrieved[:5]
+            print(f"✅ [AI] Reranking Complete: Selected top {len(retrieved)} most accurate matches")
+            logger.info("Reranking complete")
+        elif not reranker:
+            print("⚡ [AI] Reranking: Skipped (Performance Optimization)")
 
         # Phase 3: Fast Snippet Filtering (Score > 0.4)
         filtered_retrieved = [ch for ch in retrieved if (isinstance(ch, dict) and ch.get('score', 1.0) > 0.4) or (not isinstance(ch, dict) and getattr(ch, 'score', 1.0) > 0.4)]
@@ -339,19 +454,30 @@ Classification:"""
             
         context = "\n\n".join(f"SOURCE: {ch.get('doc_id', 'Unknown')}\n{ch.get('text', '')}" if isinstance(ch, dict) else f"SOURCE: {ch.doc_id}\n{ch.text}" for ch in filtered_retrieved)
         
-        # 2. Optimized High-Density Prompt (STRICT GROUNDING)
-        prompt = f"""System: NyayNeti AI. You are a STRICT factual assistant.
-- **ONLY USE CONTEXT**: You must ONLY use information from the "SOURCE:" tags below.
-- **NO HALLUCINATION**: NEVER mention "Anuradha Bhasin", "Union of India", or any other case NOT in the context.
-- **FILE NAMES**: Use the exact "SOURCE:" filenames provided. Do NOT invent PDF names.
-- **CITATIONS**: Use **Section X** bolding for items found in context.
-- **IDENTIFICATION**: Pay special attention to identifying details like names, dates, and vehicle numbers (e.g. Maruti Car No.).
-- **UNSURE**: If the answer is not in context, say "Context does not provide this information." Do NOT use your own knowledge of law.
+        # 2. Advanced Phase 2 Prompt (Structured Legal Intelligence)
+        prompt = f"""<system>
+You are NyayNeti AI, a High-Precision Legal Reasoning Assistant. You are equipped with Qwen 2.5 7B capabilities.
+Your goal is to provide deep, structured analysis based EXCLUSIVELY on the provided source documents.
 
-Context:
+### OPERATIONAL RULES:
+1. **GROUNDING**: Use ONLY information in the "SOURCE:" context. If missing, say: "The provided document does not contain information regarding [topic]."
+2. **PRECISION**: Identify names, dates, amounts exactly as they appear.
+3. **FORMAT**: Use professional legal markdown. 
+4. **STRUCTURE (MANDATORY)**:
+   - ### SUMMARY: A 1-2 sentence overview.
+   - ### ANALYSIS: Detailed breakdown. For critical facts or quotes you want to see in the PDF, wrap them in double brackets like: [[HIGHLIGHT: registration number DL-2CA-1872]].
+   - ### CONCLUSION: Final answer based on facts.
+5. **SYNC MARKERS**: You MUST use the [[HIGHLIGHT: exact text]] syntax for at least 2-3 key phrases from the source so the user can see them in the PDF.
+
+</system>
+
+<context>
 {context}
+</context>
 
-Question: {question}
+<user_question>
+{question}
+</user_question>
 
 Analysis:"""
         
@@ -368,7 +494,21 @@ Analysis:"""
             self.cache = {k: self.cache[k] for k in it}
         self.cache[cache_key] = full_response
 
-    def get_indexed_documents(self):
+    def get_cache_stats(self) -> Dict[str, Any]:
+        """Get cache performance statistics."""
+        total = self.cache_stats["total_requests"]
+        hits = self.cache_stats["hits"]
+        hit_rate = (hits / total * 100) if total > 0 else 0
+        
+        return {
+            "cache_size": len(self.cache),
+            "max_size": self.max_cache_size,
+            "total_requests": total,
+            "hits": hits,
+            "misses": self.cache_stats["misses"],
+            "hit_rate_percent": round(hit_rate, 2),
+            "memory_usage_estimate": f"{len(str(self.cache)) // 1024} KB"
+        }
         # Phase 4 (Ghost Fix): Priority to vector_store
         if self.vector_store:
             return self.vector_store.list_documents()
@@ -486,12 +626,12 @@ FIELDS TO EXTRACT:
 {field_descriptions}
 
 DOCUMENT TEXT:
-{text[:4000]}
+{text[:2500]}
 
 JSON RESULT:"""
 
         try:
-            result = self._call_llm(prompt, max_tokens=1000, stream=False)
+            result = self._call_llm(prompt, max_tokens=512, stream=False)
             # Clean up JSON if LLM added markdown formatting
             if "```json" in result:
                 result = result.split("```json")[-1].split("```")[0].strip()

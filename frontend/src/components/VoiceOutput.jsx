@@ -7,164 +7,164 @@ import { Volume2, VolumeX, Pause, Play } from 'lucide-react';
  * Supports Hindi and English with auto-detection
  */
 const VoiceOutput = ({ text, language = null }) => {
-    const [isSpeaking, setIsSpeaking] = useState(false);
-    const [isPaused, setIsPaused] = useState(false);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
-    const [audio, setAudio] = useState(null);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [audio, setAudio] = useState(null);
 
-    useEffect(() => {
-        // Cleanup on unmount
-        return () => {
-            if (audio) {
-                audio.pause();
-                audio.src = '';
-            }
-        };
-    }, [audio]);
-
-    const detectLanguage = (text) => {
-        // Simple language detection based on character ranges
-        const hindiPattern = /[\u0900-\u097F]/;
-        return hindiPattern.test(text) ? 'hi' : 'en';
+  useEffect(() => {
+    // Cleanup on unmount
+    return () => {
+      if (audio) {
+        audio.pause();
+        audio.src = '';
+      }
     };
+  }, [audio]);
 
-    const speak = async () => {
-        try {
-            setError(null);
-            setLoading(true);
+  const detectLanguage = (text) => {
+    // Simple language detection based on character ranges
+    const hindiPattern = /[\u0900-\u097F]/;
+    return hindiPattern.test(text) ? 'hi' : 'en';
+  };
 
-            // Stop any existing audio
-            if (audio) {
-                audio.pause();
-            }
+  const speak = async () => {
+    try {
+      setError(null);
+      setLoading(true);
 
-            const lang = language || detectLanguage(text);
-            const encodedText = encodeURIComponent(text);
-            const ttsUrl = `http://localhost:8000/api/tts?text=${encodedText}&lang=${lang}`;
+      // Stop any existing audio
+      if (audio) {
+        audio.pause();
+      }
 
-            console.log(`[TTS] Requesting neural audio: ${lang}`);
+      const lang = language || detectLanguage(text);
+      const encodedText = encodeURIComponent(text);
+      const ttsUrl = `http://localhost:8000/api/tts?text=${encodedText}&lang=${lang}`;
 
-            const newAudio = new Audio(ttsUrl);
+      console.log(`[TTS] Requesting neural audio: ${lang}`);
 
-            newAudio.onplay = () => {
-                setIsSpeaking(true);
-                setIsPaused(false);
-                setLoading(false);
-            };
+      const newAudio = new Audio(ttsUrl);
 
-            newAudio.onpause = () => {
-                setIsPaused(true);
-            };
+      newAudio.onplay = () => {
+        setIsSpeaking(true);
+        setIsPaused(false);
+        setLoading(false);
+      };
 
-            newAudio.onended = () => {
-                setIsSpeaking(false);
-                setIsPaused(false);
-            };
+      newAudio.onpause = () => {
+        setIsPaused(true);
+      };
 
-            newAudio.onerror = (e) => {
-                console.error('[TTS] Audio error:', e);
-                setError('Failed to load neural voice / तंत्रिका आवाज लोड करने में विफल');
-                setLoading(false);
-                setIsSpeaking(false);
-            };
+      newAudio.onended = () => {
+        setIsSpeaking(false);
+        setIsPaused(false);
+      };
 
-            setAudio(newAudio);
-            await newAudio.play();
+      newAudio.onerror = (e) => {
+        console.error('[TTS] Audio error:', e);
+        setError('Failed to load neural voice / तंत्रिका आवाज लोड करने में विफल');
+        setLoading(false);
+        setIsSpeaking(false);
+      };
 
-        } catch (err) {
-            console.error('[TTS] Error:', err);
-            setError('Failed to start speech / वाचन शुरू करने में विफल');
-            setLoading(false);
-        }
-    };
+      setAudio(newAudio);
+      await newAudio.play();
 
-    const pause = () => {
-        if (audio && !audio.paused) {
-            audio.pause();
-        }
-    };
-
-    const resume = () => {
-        if (audio && audio.paused) {
-            audio.play();
-            setIsPaused(false);
-        }
-    };
-
-    const stop = () => {
-        if (audio) {
-            audio.pause();
-            audio.currentTime = 0;
-            setIsSpeaking(false);
-            setIsPaused(false);
-        }
-    };
-
-    if (!text) {
-        return null;
+    } catch (err) {
+      console.error('[TTS] Error:', err);
+      setError('Failed to start speech / वाचन शुरू करने में विफल');
+      setLoading(false);
     }
+  };
 
-    return (
-        <div className="voice-output-container">
-            {!isSpeaking ? (
-                <button
-                    onClick={speak}
-                    disabled={loading}
-                    className={`voice-output-button ${loading ? 'loading' : ''}`}
-                    title="Listen to response / प्रतिक्रिया सुनें"
-                >
-                    {loading ? (
-                        <div className="loader-small"></div>
-                    ) : (
-                        <Volume2 className="w-4 h-4" />
-                    )}
-                    <span>{loading ? 'Processing...' : 'Listen'}</span>
-                </button>
-            ) : (
-                <div className="voice-controls">
-                    {!isPaused ? (
-                        <button
-                            onClick={pause}
-                            className="voice-control-button"
-                            title="Pause"
-                        >
-                            <Pause className="w-4 h-4" />
-                        </button>
-                    ) : (
-                        <button
-                            onClick={resume}
-                            className="voice-control-button"
-                            title="Resume"
-                        >
-                            <Play className="w-4 h-4" />
-                        </button>
-                    )}
+  const pause = () => {
+    if (audio && !audio.paused) {
+      audio.pause();
+    }
+  };
 
-                    <button
-                        onClick={stop}
-                        className="voice-control-button stop"
-                        title="Stop"
-                    >
-                        <VolumeX className="w-4 h-4" />
-                    </button>
+  const resume = () => {
+    if (audio && audio.paused) {
+      audio.play();
+      setIsPaused(false);
+    }
+  };
 
-                    {/* Sound wave animation */}
-                    <div className="sound-wave">
-                        <div className="wave-bar"></div>
-                        <div className="wave-bar"></div>
-                        <div className="wave-bar"></div>
-                    </div>
-                </div>
-            )}
+  const stop = () => {
+    if (audio) {
+      audio.pause();
+      audio.currentTime = 0;
+      setIsSpeaking(false);
+      setIsPaused(false);
+    }
+  };
 
-            {error && (
-                <div className="voice-output-error">
-                    {error}
-                </div>
-            )}
+  if (!text) {
+    return null;
+  }
 
-            <style jsx>{`
+  return (
+    <div className="voice-output-container">
+      {!isSpeaking ? (
+        <button
+          onClick={speak}
+          disabled={loading}
+          className={`voice-output-button ${loading ? 'loading' : ''}`}
+          title="Listen to response / प्रतिक्रिया सुनें"
+        >
+          {loading ? (
+            <div className="loader-small"></div>
+          ) : (
+            <Volume2 className="w-4 h-4" />
+          )}
+          <span>{loading ? 'Processing...' : 'Listen'}</span>
+        </button>
+      ) : (
+        <div className="voice-controls">
+          {!isPaused ? (
+            <button
+              onClick={pause}
+              className="voice-control-button"
+              title="Pause"
+            >
+              <Pause className="w-4 h-4" />
+            </button>
+          ) : (
+            <button
+              onClick={resume}
+              className="voice-control-button"
+              title="Resume"
+            >
+              <Play className="w-4 h-4" />
+            </button>
+          )}
+
+          <button
+            onClick={stop}
+            className="voice-control-button stop"
+            title="Stop"
+          >
+            <VolumeX className="w-4 h-4" />
+          </button>
+
+          {/* Sound wave animation */}
+          <div className="sound-wave">
+            <div className="wave-bar"></div>
+            <div className="wave-bar"></div>
+            <div className="wave-bar"></div>
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <div className="voice-output-error">
+          {error}
+        </div>
+      )}
+
+      <style>{`
         .voice-output-container {
           position: relative;
           display: inline-flex;
@@ -298,8 +298,8 @@ const VoiceOutput = ({ text, language = null }) => {
           z-index: 10;
         }
       `}</style>
-        </div>
-    );
+    </div>
+  );
 };
 
 export default VoiceOutput;

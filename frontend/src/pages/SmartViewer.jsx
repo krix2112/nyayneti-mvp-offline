@@ -13,7 +13,8 @@ import {
     Zap,
     ArrowLeft,
     SearchIcon,
-    BookMarked
+    BookMarked,
+    Square
 } from 'lucide-react';
 import PDFViewer from '../components/PDFViewer';
 import { apiClient } from '../api/client';
@@ -71,13 +72,31 @@ const SmartViewer = () => {
         }
     };
 
+    const abortControllerRef = React.useRef(null);
+
+    const handleStop = () => {
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+            abortControllerRef.current = null;
+            setIsTyping(false);
+        }
+    };
+
     const handleSend = async () => {
         if (!query.trim() || !selectedDocId) return;
+
+        // Abort previous request if any
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
 
         const userMsg = query;
         setMessages(prev => [...prev, { type: 'user', content: userMsg }]);
         setQuery('');
         setIsTyping(true);
+
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
 
         try {
             // Updated to call query/stream with doc_id for high-precision targeted answers
@@ -88,9 +107,13 @@ const SmartViewer = () => {
                     doc_id: selectedDocId,
                     question: userMsg
                 }),
+                signal: controller.signal
             });
 
-            if (!response.ok) throw new Error('Query failed');
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                throw new Error(errData.details || `Server Error: ${response.status}`);
+            }
 
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
@@ -115,15 +138,32 @@ const SmartViewer = () => {
                 setMessages(prev => {
                     const last = prev[prev.length - 1];
                     if (last.type === 'assistant') {
+                        // Extract highlights from streamed content
+                        const highlightMatches = [...streamedContent.matchAll(/\[\[HIGHLIGHT:\s*(.*?)\]\]/gi)];
+                        const newHighlights = highlightMatches.map(m => m[1]);
+                        if (newHighlights.length > 0) {
+                            setHighlights(prevH => {
+                                // Only add if not already present to avoid jitter
+                                const unique = newHighlights.filter(h => !prevH.includes(h));
+                                return [...prevH, ...unique];
+                            });
+                        }
+
                         return [...prev.slice(0, -1), { ...last, content: streamedContent }];
                     }
                     return prev;
                 });
             }
         } catch (err) {
-            setMessages(prev => [...prev, { type: 'error', content: 'Connection error. Is the local AI active?' }]);
+            if (err.name === 'AbortError') {
+                console.log('Generation stopped by user');
+            } else {
+                console.error(err);
+                setMessages(prev => [...prev, { type: 'error', content: `Error: ${err.message}. Check backend terminal.` }]);
+            }
         } finally {
             setIsTyping(false);
+            abortControllerRef.current = null;
         }
     };
 
@@ -154,7 +194,7 @@ const SmartViewer = () => {
                 </div>
             </div>
 
-            {/* Main Split Interface */}
+            {/* Main Smart Interface */}
             <div className="flex-1 flex overflow-hidden">
                 {/* Left: PDF Viewer (60-70%) */}
                 <div className="flex-1 flex flex-col min-w-0 bg-slate-900 overflow-hidden">
@@ -221,9 +261,10 @@ const SmartViewer = () => {
                                             remarkPlugins={[remarkGfm]}
                                             components={{
                                                 strong: ({ node, ...props }) => <span className="font-bold text-gold" {...props} />,
+                                                // Function to clean highlights from text display
                                             }}
                                         >
-                                            {msg.content}
+                                            {msg.content.replace(/\[\[HIGHLIGHT:\s*(.*?)\]\]/gi, '$1')}
                                         </ReactMarkdown>
 
                                         {/* Voice Output for AI messages */}
@@ -283,22 +324,27 @@ const SmartViewer = () => {
                                 </div>
 
                                 <button
-                                    onClick={handleSend}
-                                    disabled={!query.trim()}
-                                    className="absolute right-2 top-1.5 p-2.5 bg-gold hover:bg-orange-600 rounded-xl text-slate-900 transition-all disabled:opacity-50"
+                                    onClick={isTyping ? handleStop : handleSend}
+                                    title={isTyping ? "Stop generating" : "Send message"}
+                                    disabled={!isTyping && !query.trim()}
+                                    className={`absolute right-2 top-1.5 p-2.5 rounded-xl transition-all ${isTyping
+                                        ? 'bg-red-500/20 text-red-500 hover:bg-red-500/30 border border-red-500/50 animate-pulse'
+                                        : 'bg-gold hover:bg-orange-600 text-slate-900 disabled:opacity-50'
+                                        }`}
                                 >
-                                    <ChevronRight size={20} />
+                                    {isTyping ? <Square size={20} fill="currentColor" /> : <ChevronRight size={20} />}
                                 </button>
                             </div>
-                            <p className="text-[10px] text-center text-gray-500 mt-4 flex items-center justify-center gap-1">
-                                <Zap size={10} /> POWERED BY LOCAL DEEPSEEK R1 • NO DATA LEAVES DEVICE
-                            </p>
+                            <span className="text-xs text-slate-500 font-medium tracking-wider flex items-center gap-1.5">
+                                <Zap size={12} className="text-gold" />
+                                POWERED BY LOCAL QWEN 2.5 7B • NO DATA LEAVES YOUR DEVICE
+                            </span>
                         </div>
                     </div>
                 )}
             </div>
 
-            <style jsx="true">{`
+            <style>{`
         .custom-scrollbar::-webkit-scrollbar {
           width: 6px;
           height: 6px;

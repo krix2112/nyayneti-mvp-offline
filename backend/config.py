@@ -9,12 +9,18 @@ class Settings:
     DEBUG: bool = False
     BACKEND_PORT: int = 8000
     
-    # HARDCODED AI PARAMETERS FOR DEMO
-    CHUNK_SIZE: int = 500
-    CHUNK_OVERLAP: int = 50
-    TOP_K: int = 8
+    # OPTIMIZED AI PARAMETERS FOR SPEED
+    CHUNK_SIZE: int = 300  # Reduced for faster processing
+    CHUNK_OVERLAP: int = 30
+    TOP_K: int = 5  # Reduced from 8 for faster retrieval
     TEMPERATURE: float = 0.3
-    MAX_TOKENS: int = 1000
+    MAX_TOKENS: int = 800  # Reduced from 1000
+    
+    # PERFORMANCE TUNING
+    LLM_THREADS: int = int(os.getenv("LLM_THREADS", "8"))
+    LLM_GPU_LAYERS: int = int(os.getenv("LLM_GPU_LAYERS", "0"))
+    LLM_CONTEXT_LENGTH: int = int(os.getenv("LLM_CONTEXT_LENGTH", "2048"))
+    LLM_BATCH_SIZE: int = int(os.getenv("LLM_BATCH_SIZE", "512"))
     
     # PATHS
     UPLOAD_DIR: str = ""

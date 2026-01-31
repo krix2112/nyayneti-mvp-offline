@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { PenTool, BarChart2, Split } from 'lucide-react';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -271,9 +272,7 @@ export default function Dashboard() {
               to="/draft"
               className="p-6 bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 hover:border-gold/50 transition-all group lg:col-span-1"
             >
-              <span className="material-symbols-outlined text-4xl text-orange-400 mb-3 block group-hover:scale-110 transition-transform">
-                auto_draw
-              </span>
+              <PenTool className="text-4xl text-orange-400 mb-3 block group-hover:scale-110 transition-transform w-10 h-10" />
               <h4 className="font-bold text-base mb-1">Auto-Drafter</h4>
               <p className="text-xs text-gray-400">Generate legal drafts</p>
             </Link>
@@ -282,9 +281,7 @@ export default function Dashboard() {
               to="/strength"
               className="p-6 bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 hover:border-gold/50 transition-all group lg:col-span-1"
             >
-              <span className="material-symbols-outlined text-4xl text-green-400 mb-3 block group-hover:scale-110 transition-transform">
-                analytics
-              </span>
+              <BarChart2 className="text-4xl text-green-400 mb-3 block group-hover:scale-110 transition-transform w-10 h-10" />
               <h4 className="font-bold text-base mb-1">Strength Analysis</h4>
               <p className="text-xs text-gray-400">Evaluate legal robustness</p>
             </Link>
@@ -293,10 +290,8 @@ export default function Dashboard() {
               to="/viewer"
               className="p-6 bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 hover:border-gold/50 transition-all group lg:col-span-1"
             >
-              <span className="material-symbols-outlined text-4xl text-blue-400 mb-3 block group-hover:scale-110 transition-transform">
-                split_screen
-              </span>
-              <h4 className="font-bold text-base mb-1">Split Viewer</h4>
+              <Split className="text-4xl text-blue-400 mb-3 block group-hover:scale-110 transition-transform w-10 h-10" />
+              <h4 className="font-bold text-base mb-1">Smart Viewer</h4>
               <p className="text-xs text-gray-400">View PDF & AI Chat</p>
             </Link>
           </div>

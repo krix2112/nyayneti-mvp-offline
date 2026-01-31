@@ -160,6 +160,8 @@ class DocumentDrafter:
         self.llm_engine = llm_engine
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
+        self._draft_cache: Dict[str, Dict[str, Any]] = {} # Cache for AI drafts
+        self._max_cache_size = 50  # Limit cache size to prevent memory issues
         logger.info(f"Document Drafter initialized. Output dir: {self.output_dir}")
     
     def get_templates(self) -> List[Dict[str, Any]]:
@@ -496,18 +498,23 @@ Note: The language of the Charge Sheet shall be easily understood by the charge-
             elif template_type == "charge_sheet":
                 instructions = "Tone should be formal, professional, and disciplinary. Clearly list the misconduct acts. Use specific terms like 'misconduct', 'uncalled-for acts', 'subsistence allowance', and 'disciplinary action'. Follow the structure of a formal Indian industrial charge sheet."
 
-            prompt = f"""### AI Legal Drafter Task
-System: You are a professional Indian High Court Advocate. Draft a formal document for: {template_name}.
-Instructions: {instructions}
-Format: Court-ready professional formatting. Use CAPS for headings.
-
-USER INPUTS:
+            # Force lightning-fast output by telling model to skip thinking/meta-talk
+            prompt = f"""<system>You are a legal document drafter. Output ONLY the formal document. No explanations. No <think> tags.</system>
+### Legal Template: {template_name}
+### Inputs:
 {inputs_str}
 
-DRAFT DOCUMENT (Begin drafting now):"""
+### Instructions: 
+1. Create a professional {template_name}.
+2. Use formal legal language.
+3. Be concise but thorough.
+
+Output Document:
+"""
 
             logger.info(f"Generating {template_type} via AI...")
-            result = self.llm_engine._call_llm(prompt, max_tokens=2500, stream=False)
+            # Reduced max_tokens for faster response
+            result = self.llm_engine._call_llm(prompt, max_tokens=600, stream=False)
             
             # Post-processing: remove any meta-text if LLM added "Here is your document..."
             if "###" in result:
@@ -539,6 +546,15 @@ DRAFT DOCUMENT (Begin drafting now):"""
             # Validate template type
             if template_type not in TEMPLATES:
                 raise ValueError(f"Unknown template type: {template_type}")
+                
+            # Phase 8: Cache Check (Avoid redundant AI calls)
+            import hashlib
+            inputs_json = json.dumps(user_inputs, sort_keys=True)
+            cache_key = hashlib.md5(f"{template_type}_{inputs_json}_{enhance_with_llm}".encode()).hexdigest()
+            
+            if cache_key in self._draft_cache:
+                logger.info(f"💾 [DRAFTER] Cache HIT for {template_type}")
+                return self._draft_cache[cache_key]
             
             # Generate document text based on template type
             if template_type == "bail_application":
@@ -584,7 +600,7 @@ DRAFT DOCUMENT (Begin drafting now):"""
             sections = user_inputs.get('sections', [])
             citations = self._get_relevant_citations(sections)
             
-            return {
+            res = {
                 "success": True,
                 "document_id": doc_id,
                 "filename": f"{filename}{file_ext}",
@@ -595,6 +611,16 @@ DRAFT DOCUMENT (Begin drafting now):"""
                 "template_type": template_type,
                 "generation_time": datetime.now().isoformat()
             }
+            
+            # Save to cache with size management
+            if len(self._draft_cache) >= self._max_cache_size:
+                # Remove oldest entry (FIFO)
+                oldest_key = next(iter(self._draft_cache))
+                del self._draft_cache[oldest_key]
+            
+            self._draft_cache[cache_key] = res
+            logger.info(f"💾 [DRAFTER] Cached result for {template_type} (cache size: {len(self._draft_cache)})")
+            return res
             
         except Exception as e:
             logger.error(f"Document generation failed: {e}", exc_info=True)

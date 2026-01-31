@@ -203,7 +203,7 @@ const VoiceInput = ({ onTranscription, language = null }) => {
                 </div>
             )}
 
-            <style jsx>{`
+            <style>{`
         .voice-input-container {
           position: relative;
           display: inline-flex;
