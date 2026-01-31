@@ -318,6 +318,122 @@ def create_app() -> Flask:
             logger.error(f"Delete document failed: {e}", exc_info=True)
             return jsonify({'error': str(e)}), 500
 
+    # --- VOICE FEATURES ENDPOINTS ---
+    
+    @app.route("/api/transcribe", methods=["POST"])
+    def transcribe_audio():
+        """Transcribe audio file to text using Whisper"""
+        import tempfile
+        from services.voice_processor import get_transcriber
+        from services.audio_utils import validate_audio_file, convert_to_wav, get_audio_duration, cleanup_temp_file
+        
+        try:
+            # Check if audio file is present
+            if 'audio' not in request.files:
+                logger.warning("[VOICE] No audio file in request")
+                return jsonify({'error': 'No audio file provided'}), 400
+            
+            audio_file = request.files['audio']
+            
+            if audio_file.filename == '':
+                logger.warning("[VOICE] Empty filename")
+                return jsonify({'error': 'No file selected'}), 400
+            
+            # Get optional language parameter
+            language = request.form.get('language', None)  # 'hi' or 'en' or None for auto-detect
+            
+            logger.info(f"[VOICE] Received audio file: {audio_file.filename}")
+            logger.info(f"[VOICE] Requested language: {language or 'auto-detect'}")
+            
+            # Save uploaded file temporarily
+            temp_dir = tempfile.gettempdir()
+            temp_input_path = os.path.join(temp_dir, f"voice_input_{datetime.now().strftime('%Y%m%d_%H%M%S')}.webm")
+            audio_file.save(temp_input_path)
+            
+            logger.info(f"[VOICE] Saved to temp: {temp_input_path}")
+            
+            # Validate file size
+            is_valid, error_msg = validate_audio_file(temp_input_path)
+            if not is_valid:
+                cleanup_temp_file(temp_input_path)
+                logger.error(f"[VOICE] Validation failed: {error_msg}")
+                return jsonify({'error': error_msg}), 400
+            
+            # Convert to WAV format (16kHz mono)
+            temp_wav_path = os.path.join(temp_dir, f"voice_input_{datetime.now().strftime('%Y%m%d_%H%M%S')}.wav")
+            success, result = convert_to_wav(temp_input_path, temp_wav_path)
+            
+            if not success:
+                cleanup_temp_file(temp_input_path)
+                logger.error(f"[VOICE] Conversion failed: {result}")
+                return jsonify({'error': f'Audio conversion failed: {result}'}), 500
+            
+            wav_path = result
+            logger.info(f"[VOICE] Converted to WAV: {wav_path}")
+            
+            # Get audio duration
+            duration = get_audio_duration(wav_path)
+            
+            # Transcribe using Whisper
+            transcriber = get_transcriber()
+            success, transcription_result = transcriber.transcribe(wav_path, language=language)
+            
+            # Cleanup temp files
+            cleanup_temp_file(temp_input_path)
+            cleanup_temp_file(wav_path)
+            
+            if not success:
+                error = transcription_result.get('error', 'Unknown error')
+                logger.error(f"[VOICE] Transcription failed: {error}")
+                return jsonify({'error': error}), 500
+            
+            # Return transcription result
+            response_data = {
+                'text': transcription_result['text'],
+                'language': transcription_result['language'],
+                'duration': duration or transcription_result.get('duration', 0),
+                'transcription_time': transcription_result['transcription_time']
+            }
+            
+            logger.info(f"[VOICE] ✅ Transcription successful: {response_data['text'][:50]}...")
+            return jsonify(response_data), 200
+            
+        except Exception as e:
+            logger.error(f"[VOICE] ❌ Transcription endpoint error: {e}", exc_info=True)
+            return jsonify({'error': f'Server error: {str(e)}'}), 500
+    
+    @app.route("/api/tts", methods=["GET"])
+    def text_to_speech():
+        """Convert text to speech using Piper neural TTS"""
+        from services.piper_tts import get_tts_engine
+        from flask import send_file
+        
+        try:
+            text = request.args.get('text', '')
+            lang = request.args.get('lang', 'en')
+            
+            if not text:
+                return jsonify({'error': 'No text provided'}), 400
+            
+            engine = get_tts_engine()
+            success, output_path_or_err = engine.synthesize(text, lang=lang)
+            
+            if not success:
+                logger.error(f"[VOICE] TTS synthesis failed: {output_path_or_err}")
+                return jsonify({'error': f'Synthesis failed: {output_path_or_err}'}), 500
+            
+            # Return the audio file
+            return send_file(
+                output_path_or_err,
+                mimetype="audio/wav",
+                as_attachment=False,
+                download_name="speech.wav"
+            )
+            
+        except Exception as e:
+            logger.error(f"[VOICE] ❌ TTS endpoint error: {e}", exc_info=True)
+            return jsonify({'error': f'Server error: {str(e)}'}), 500
+    
     # --- POWER FEATURES ENDPOINTS ---
     
     @app.route("/api/templates", methods=["GET"])
