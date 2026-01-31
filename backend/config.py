@@ -45,7 +45,7 @@ def get_settings() -> Settings:
     
     return Settings(
         UPLOAD_DIR=str(backend_root / "uploads"),
-        EMBEDDING_DIR=str(ml_root / "embeddings"),
+        EMBEDDING_DIR=str(backend_root / "ml" / "embeddings"),
         COMPARISONS_DIR=str(comp_dir),
         DEMO_DATA_DIR=str(backend_root / "demo_data"),
         LLM_MODEL_PATH=str(llm_path) if llm_path.exists() else None,

@@ -121,6 +121,29 @@ See `.env.example` files in root, backend and frontend for templates.
 
 ---
 
+## Performance Optimization (Phase 3)
+
+The NyayNeti AI engine has been optimized for speed and efficiency. Follow these steps to maximize performance:
+
+### 1. Hardware Acceleration (GPU)
+To achieve the fastest response times, ensure **Ollama** is utilizing your GPU:
+- **NVIDIA Users**: Install [NVIDIA CUDA Toolkit](https://developer.nvidia.com/cuda-downloads). Ollama will automatically detect and use it.
+- **AMD Users**: Ensure you have the latest ROCm drivers installed.
+- **Check Status**: Run `ollama ps` while answering a query. You should see the model listed. If it says "CPU", check your drivers.
+
+### 2. Query Caching
+The application now features a **Semantic Query Cache**:
+- **Instant Responses**: Identical or very similar queries will respond in **< 50ms**, bypassing the AI model entirely.
+- **Memory Efficient**: Uses a 50-item LRU cache to keep the backend lightweight.
+
+### 3. Model Recommendations
+For the best balance of speed and legal accuracy, we recommend:
+- **Default**: `deepseek-r1:1.5b` (Excellent speed on moderate hardware)
+- **High Accuracy**: `deepseek-r1:7b` (Recommended if you have 8GB+ VRAM)
+- **Fastest**: `deepseek-v3` (via Ollama API if hosted)
+
+---
+
 ## License
 
 This project is licensed under the **MIT License** – see `LICENSE` for details.

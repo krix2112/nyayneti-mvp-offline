@@ -10,6 +10,9 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 import requests
+import logging
+
+logger = logging.getLogger(__name__)
 
 try:
     from llama_cpp import Llama
@@ -18,6 +21,7 @@ except ImportError:
     LLAMA_CPP_AVAILABLE = False
 
 from .pdf_processor import split_text_into_chunks
+from .vector_store import PersistentVectorStore
 from .json_utils import sanitize_for_json
 
 
@@ -54,6 +58,7 @@ class LLMEngine:
         demo_mode: bool = False,
         ollama_base_url: str = OLLAMA_BASE_URL,
         ollama_model: str = OLLAMA_MODEL,
+        vector_store: Optional[PersistentVectorStore] = None,
     ):
         self.model_name = model_name
         self.api_key = api_key
@@ -66,6 +71,14 @@ class LLMEngine:
         self.demo_mode = demo_mode
         self.ollama_base_url = ollama_base_url
         self.ollama_model = ollama_model
+        self.vector_store = vector_store
+        
+        # Phase 3: Query Cache (Simple LRU)
+        self.cache: Dict[str, str] = {}
+        self.max_cache_size = 50
+        
+        # Phase 4: Reset cache on startup to clear old hallucinations
+        self.cache.clear()
 
         os.makedirs(self.embedding_dir, exist_ok=True)
         self.index_path = os.path.join(self.embedding_dir, "index.jsonl")
@@ -96,6 +109,57 @@ class LLMEngine:
         """Perform a dummy query to warm up the model cache."""
         print("Pre-warming LLM Engine...")
         list(self._call_llm("Warmup", max_tokens=5, stream=True))
+
+    def is_query_meaningful(self, query: str) -> tuple[bool, str]:
+        """
+        Heuristic + LLM check to see if a query is meaningful.
+        Returns (is_valid, error_message).
+        """
+        query = query.strip()
+        if len(query) < 3:
+            return False, "Input too short to be a valid question."
+        
+        # 1. Heuristic: Check for low vowel-to-consonant ratio or extreme randomness
+        # This catches strings like "bjhwferf"
+        vowels = "aeiouAEIOU"
+        vowel_count = sum(1 for char in query if char in vowels)
+        alpha_count = sum(1 for char in query if char.isalpha())
+        
+        # If it's mostly random letters with no vowels, it's likely gibberish
+        if alpha_count > 5 and vowel_count == 0:
+            return False, "Input appears to be random characters (no vowels)."
+        
+        # Heuristic: Entropy-like check (character diversity)
+        # Random typing often uses a small set of neighboring keys or extreme variety
+        unique_chars = len(set(query.lower()))
+        if len(query) > 10 and unique_chars < 3:
+            return False, "Input appears to be repetitive or non-semantic."
+
+        # 2. Heuristic: Too many repetitive characters
+        for char in set(query):
+            if query.count(char) > len(query) * 0.6 and len(query) > 5:
+                return False, "Input contains too many repetitive characters."
+
+        # 3. LLM Fast Classification (Guardrail)
+        # Use a very small max_tokens to save time
+        classification_prompt = f"""Task: Is this a meaningful human message/question? 
+Answer ONLY [VALID] or [INVALID].
+Examples:
+"Hello" -> [VALID]
+"Tell me about the Zarina case" -> [VALID]
+"bjhwferf" -> [INVALID]
+"12345678" -> [INVALID]
+"ked jwer" -> [INVALID]
+
+Input: "{query}"
+Classification:"""
+        
+        result = self._call_llm(classification_prompt, max_tokens=5, stream=False)
+        if "[INVALID]" in result:
+            logger.warning(f"AI rejected query as gibberish: {query}")
+            return False, "AI detected this as irrelevant or gibberish input."
+            
+        return True, ""
 
     def _call_llm(self, prompt: str, max_tokens: int = 512, stream: bool = False):
         """Call the available LLM (Local GGUF -> Ollama -> Error)."""
@@ -135,47 +199,34 @@ class LLMEngine:
     def _call_ollama(self, prompt: str, max_tokens: int) -> str:
         try:
             resp = requests.post(f"{self.ollama_base_url}/api/generate", json={
-                "model": "deepseek-r1:1.5b", "prompt": prompt, "stream": False, "options": {"num_predict": max_tokens}
+                "model": self.ollama_model, "prompt": prompt, "stream": False, "options": {"num_predict": max_tokens}
             }, timeout=60)
             return resp.json().get("response", "").strip()
         except: return "Ollama connection failed."
 
     def _call_ollama_stream(self, prompt: str, max_tokens: int):
+        token_count = 0
+        logger.info(f"Starting Ollama stream for model: {self.ollama_model} (Prompt: {len(prompt)} chars)")
+        
         try:
-            print(f"🔄 Starting Ollama stream request...")
-            print(f"📝 Prompt length: {len(prompt)} characters")
-            
             resp = requests.post(f"{self.ollama_base_url}/api/generate", json={
-                "model": "deepseek-r1:1.5b", "prompt": prompt, "stream": True, "options": {"num_predict": max_tokens}
-            }, stream=True, timeout=300)  # Increased to 5 minutes
+                "model": self.ollama_model, "prompt": prompt, "stream": True, "options": {"num_predict": max_tokens}
+            }, stream=True, timeout=300)
             
-            print(f"✅ Response status: {resp.status_code}")
-            
-            token_count = 0
             for line in resp.iter_lines():
                 if line:
-                    try:
-                        data = json.loads(line)
-                        token = data.get("response", "")
-                        if token:
-                            token_count += 1
-                            yield token
-                        if data.get("done"):
-                            print(f"✅ Stream complete! Generated {token_count} tokens")
-                            break
-                    except json.JSONDecodeError as e:
-                        print(f"❌ JSON decode error: {e}")
-                        
+                    chunk = json.loads(line)
+                    token = chunk.get("response", "")
+                    if token:
+                        token_count += 1
+                        yield token
+            
             if token_count == 0:
-                print("⚠️ WARNING: No tokens generated!")
-                yield "No response generated. Please try again."
-                
+                logger.warning("No tokens generated by Ollama!")
+                yield "No response generated. Please try again or check if the model is loaded."
         except Exception as e:
-            error_msg = f"Ollama streaming failed: {str(e)}"
-            print(f"❌ {error_msg}")
-            import traceback
-            print(traceback.format_exc())
-            yield f"[Error: {error_msg}]"
+            logger.error(f"Ollama streaming failed: {e}", exc_info=True)
+            yield f"\n\n[Error: Ollama streaming failed: {str(e)}]\n"
 
     def _get_embedding_model(self):
         if self._embedding_model is not None: return self._embedding_model
@@ -258,16 +309,67 @@ class LLMEngine:
         return [s[1] for s in scores[:top_k]]
 
     def answer_question_stream(self, question: str):
-        retrieved = self._hybrid_retrieve(question)
-        context = "\n\n".join(f"DOC: {ch.doc_id}\n{ch.text}" for ch in retrieved)
-        prompt = f"System: Indian legal expert. Answer based on context.\nContext:\n{context}\n\nQuestion: {question}\nResult:"
+        # Phase 3: Cache Check (Instant Response)
+        cache_key = question.strip().lower()
+        if cache_key in self.cache:
+            logger.info(f"Cache hit for query: {question[:30]}...")
+            yield f"DATA: {json.dumps({'is_cached': True})}\n\n"
+            yield self.cache[cache_key]
+            return
+
+        # 1. Hybrid Retrieval
+        if self.vector_store:
+            emb_model = self._get_embedding_model()
+            q_emb = emb_model.encode(question) if emb_model else np.zeros(384)
+            retrieved = self.vector_store.search(
+                query_embedding=q_emb,
+                query_text=question,
+                top_k=5,
+                include_neighbors=True
+            )
+        else:
+            retrieved = self._hybrid_retrieve(question)
+
+        # Phase 3: Fast Snippet Filtering (Score > 0.4)
+        filtered_retrieved = [ch for ch in retrieved if (isinstance(ch, dict) and ch.get('score', 1.0) > 0.4) or (not isinstance(ch, dict) and getattr(ch, 'score', 1.0) > 0.4)]
+        if not filtered_retrieved and retrieved:
+            filtered_retrieved = retrieved[:2] # Fallback to top 2 if filtering is too aggressive
+            
+        context = "\n\n".join(f"SOURCE: {ch.get('doc_id', 'Unknown')}\n{ch.get('text', '')}" if isinstance(ch, dict) else f"SOURCE: {ch.doc_id}\n{ch.text}" for ch in filtered_retrieved)
         
-        metadata = {"context_snippets": [{"doc_id": ch.doc_id, "text": ch.text[:200]} for ch in retrieved]}
-        yield f"DATA: {json.dumps(metadata)}\n\n"
+        # 2. Optimized High-Density Prompt (STRICT GROUNDING)
+        prompt = f"""System: NyayNeti AI. You are a STRICT factual assistant.
+- **ONLY USE CONTEXT**: You must ONLY use information from the "SOURCE:" tags below.
+- **NO HALLUCINATION**: NEVER mention "Anuradha Bhasin", "Union of India", or any other case NOT in the context.
+- **FILE NAMES**: Use the exact "SOURCE:" filenames provided. Do NOT invent PDF names.
+- **CITATIONS**: Use **Section X** bolding for items found in context.
+- **UNSURE**: If the answer is not in context, say "Context does not provide this information." Do NOT use your own knowledge of law.
+
+Context:
+{context}
+
+Question: {question}
+
+Analysis:"""
+        
+        full_response = ""
         for token in self._call_llm(prompt, stream=True):
+            full_response += token
             yield token
+            
+        # Phase 3: Populating Cache
+        if len(self.cache) >= self.max_cache_size:
+            # Shift oldest key (FIFO)
+            it = iter(self.cache)
+            next(it)
+            self.cache = {k: self.cache[k] for k in it}
+        self.cache[cache_key] = full_response
 
     def get_indexed_documents(self):
+        # Phase 4 (Ghost Fix): Priority to vector_store
+        if self.vector_store:
+            return self.vector_store.list_documents()
+            
         chunks = self._load_index()
         docs = {}
         for ch in chunks:
@@ -277,12 +379,16 @@ class LLMEngine:
 
     def compare_pdf_stream(self, selected_pdf_id: str, query: str = ""):
         """Compare selected PDF against all other PDFs in database with streaming response."""
-        chunks = self._load_index()
+        # Phase 4: Use unified vector store
+        if self.vector_store:
+            chunks = self.vector_store.documents
+        else:
+            chunks = self._load_index()
         
         # Get chunks from selected PDF
-        selected_chunks = [ch for ch in chunks if ch.doc_id == selected_pdf_id]
+        selected_chunks = [ch for ch in chunks if (isinstance(ch, dict) and ch.get('doc_id') == selected_pdf_id) or (not isinstance(ch, dict) and ch.doc_id == selected_pdf_id)]
         # Get chunks from all other PDFs
-        other_chunks = [ch for ch in chunks if ch.doc_id != selected_pdf_id]
+        other_chunks = [ch for ch in chunks if (isinstance(ch, dict) and ch.get('doc_id') != selected_pdf_id) or (not isinstance(ch, dict) and ch.doc_id != selected_pdf_id)]
         
         if not selected_chunks:
             yield "ERROR: Selected PDF not found in database."
@@ -293,49 +399,51 @@ class LLMEngine:
             return
         
         # Build context from selected PDF (REDUCED to 3 chunks to avoid timeout)
-        selected_context = "\\n".join(ch.text for ch in selected_chunks[:3])
+        selected_context = "\n".join(ch.get('text', '') if isinstance(ch, dict) else ch.text for ch in selected_chunks[:3])
         
         # Build context from other PDFs (sample ONLY 2 chunks from each)
         other_docs = {}
         for ch in other_chunks:
-            if ch.doc_id not in other_docs:
-                other_docs[ch.doc_id] = []
-            if len(other_docs[ch.doc_id]) < 2:  # Limit to 2 chunks per doc
-                other_docs[ch.doc_id].append(ch.text)
+            doc_id = ch.get('doc_id') if isinstance(ch, dict) else ch.doc_id
+            text = ch.get('text', '') if isinstance(ch, dict) else ch.text
+            if doc_id not in other_docs:
+                other_docs[doc_id] = []
+            if len(other_docs[doc_id]) < 2:  # Limit to 2 chunks per doc
+                other_docs[doc_id].append(text)
         
-        other_context = "\\n\\n".join(
-            f"Document: {doc_id}\\n{' '.join(texts)}" 
+        other_context = "\n\n".join(
+            f"Document: {doc_id}\n{' '.join(texts)}" 
             for doc_id, texts in other_docs.items()
         )
         
-        # Build OPTIMIZED comparison prompt with better formatting instructions
+        # Build OPTIMIZED comparison prompt with STRICT GROUNDING (Reduced for stability)
         if query:
-            prompt = f"""Answer this question about the legal documents:
-{query}
+            prompt = f"""### Comparison Analysis by NyayNeti AI
+System: Analyze using ONLY provided context. Focus on differences and specific facts.
+
+Question: {query}
 
 SELECTED DOCUMENT: {selected_pdf_id}
-{selected_context[:1000]}
+{selected_context[:2500]}
 
-OTHER DOCUMENTS:
-{other_context[:1000]}
+OTHER DOCUMENTS (Context snippets):
+{other_context[:5000]}
 
-Provide a clear, well-structured answer with proper paragraphs."""
+Analysis:"""
         else:
-            prompt = f"""Compare these legal documents and provide a structured analysis.
+            prompt = f"""### Legal Comparison by NyayNeti AI
+System: Compare the selected document against the others. 
+Structure: 
+1. Main topic of selected document.
+2. key legal similarities/differences.
 
 SELECTED DOCUMENT: {selected_pdf_id}
-{selected_context[:1000]}
+{selected_context[:2500]}
 
-OTHER DOCUMENTS:
-{other_context[:1000]}
+OTHER DOCUMENTS (Context snippets):
+{other_context[:5000]}
 
-Provide a clear comparison covering:
-1. Main topic of selected document
-2. Key differences from other documents  
-3. Notable similarities
-4. Unique aspects
-
-Use clear paragraphs and proper formatting."""
+Comparison Analysis:"""
         
         # Stream the analysis
         metadata = {
@@ -344,20 +452,17 @@ Use clear paragraphs and proper formatting."""
             "total_documents": len(other_docs) + 1
         }
         
-        print(f"📊 Comparison metadata: {metadata}")
-        yield f"DATA: {json.dumps(metadata)}\\n\\n"
+        logger.info(f"📊 Sending comparison metadata for {selected_pdf_id} against {len(other_docs)} items")
+        yield f"DATA: {json.dumps(metadata)}\n\n"
         
-        print(f"🤖 Calling LLM for comparison...")
         token_count = 0
         try:
-            for token in self._call_llm(prompt, max_tokens=1000, stream=True):
+            # Increased max_tokens to 2048 to allow for "thought" and "response"
+            for token in self._call_llm(prompt, max_tokens=2048, stream=True):
                 token_count += 1
                 yield token
-            print(f"✅ Comparison complete! Streamed {token_count} tokens")
+            logger.info(f"✅ Comparison complete! Streamed {token_count} tokens")
         except Exception as e:
-            error_msg = f"Error during LLM call: {str(e)}"
-            print(f"❌ {error_msg}")
-            import traceback
-            print(f"Traceback: {traceback.format_exc()}")
-            yield f"\n\n[{error_msg}]\n"
+            logger.error(f"Error during LLM comparison call: {e}", exc_info=True)
+            yield f"\n\n[Analysis Error: {str(e)}]\n"
 

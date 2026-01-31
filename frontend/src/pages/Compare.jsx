@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { apiClient } from '../api/client';
 
 function Compare() {
@@ -108,14 +110,14 @@ function Compare() {
                 buffer += decoder.decode(value, { stream: true });
 
                 if (!metadataProcessed) {
-                    const boundary = buffer.indexOf('\\n\\n');
+                    const boundary = buffer.indexOf('\n\n');
                     if (boundary !== -1) {
                         const metadataPart = buffer.substring(0, boundary);
                         const remaining = buffer.substring(boundary + 2);
 
                         if (metadataPart.startsWith('DATA: ')) {
                             try {
-                                const jsonStr = metadataPart.replace('DATA: ', '');
+                                const jsonStr = metadataPart.replace('DATA: ', '').trim();
                                 const meta = JSON.parse(jsonStr);
                                 setMetadata(meta);
                                 setProgress(80);
@@ -339,20 +341,67 @@ function Compare() {
                                     )}
 
                                     <div className={`max-w-[80%] rounded-2xl p-4 ${msg.type === 'user'
-                                            ? 'bg-gold text-slate-900 font-medium'
-                                            : msg.type === 'error'
-                                                ? 'bg-red-500/20 border border-red-500/30 text-red-400'
-                                                : msg.type === 'system'
-                                                    ? 'bg-blue-500/20 border border-blue-500/30 text-blue-400'
-                                                    : 'bg-slate-800/50 border border-white/10 text-gray-200'
+                                        ? 'bg-gold text-slate-900 font-medium'
+                                        : msg.type === 'error'
+                                            ? 'bg-red-500/20 border border-red-500/30 text-red-400'
+                                            : msg.type === 'system'
+                                                ? 'bg-blue-500/20 border border-blue-500/30 text-blue-400'
+                                                : 'bg-slate-800/50 border border-white/10 text-gray-200'
                                         }`}>
-                                        <div className="text-sm leading-relaxed whitespace-pre-wrap">
-                                            {msg.content.split('\n\n').map((paragraph, j) => (
-                                                <p key={j} className={j > 0 ? 'mt-3' : ''}>
-                                                    {paragraph}
-                                                </p>
-                                            ))}
-                                        </div>
+                                        {msg.type === 'assistant' ? (
+                                            <div className="text-sm leading-relaxed prose prose-invert prose-sm max-w-none">
+                                                <ReactMarkdown
+                                                    remarkPlugins={[remarkGfm]}
+                                                    components={{
+                                                        strong: ({ node, ...props }) => (
+                                                            <strong className="font-bold text-gold bg-gold/5 px-1 rounded" {...props} />
+                                                        ),
+                                                        em: ({ node, ...props }) => (
+                                                            <em className="italic text-gray-300" {...props} />
+                                                        ),
+                                                        h3: ({ node, ...props }) => (
+                                                            <h3 className="text-lg font-bold mt-6 mb-3 text-white border-b border-white/10 pb-1" {...props} />
+                                                        ),
+                                                        ul: ({ node, ...props }) => (
+                                                            <ul className="list-disc ml-6 my-3 space-y-2 text-gray-300" {...props} />
+                                                        ),
+                                                        ol: ({ node, ...props }) => (
+                                                            <ol className="list-decimal ml-6 my-3 space-y-2 text-gray-300" {...props} />
+                                                        ),
+                                                        li: ({ node, ...props }) => (
+                                                            <li className="leading-relaxed" {...props} />
+                                                        ),
+                                                        p: ({ node, ...props }) => (
+                                                            <p className="mb-4 leading-relaxed text-gray-200" {...props} />
+                                                        ),
+                                                        table: ({ node, ...props }) => (
+                                                            <div className="overflow-x-auto my-6 border border-white/10 rounded-lg">
+                                                                <table className="min-w-full divide-y divide-white/10" {...props} />
+                                                            </div>
+                                                        ),
+                                                        thead: ({ node, ...props }) => (
+                                                            <thead className="bg-white/5" {...props} />
+                                                        ),
+                                                        th: ({ node, ...props }) => (
+                                                            <th className="px-4 py-2 text-left text-xs font-bold text-gold uppercase tracking-wider" {...props} />
+                                                        ),
+                                                        td: ({ node, ...props }) => (
+                                                            <td className="px-4 py-2 text-sm text-gray-300 border-t border-white/5" {...props} />
+                                                        ),
+                                                    }}
+                                                >
+                                                    {msg.content}
+                                                </ReactMarkdown>
+                                            </div>
+                                        ) : (
+                                            <div className="text-sm leading-relaxed whitespace-pre-wrap">
+                                                {msg.content.split('\n\n').map((paragraph, j) => (
+                                                    <p key={j} className={j > 0 ? 'mt-3' : ''}>
+                                                        {paragraph}
+                                                    </p>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
 
                                     {msg.type === 'user' && (
@@ -371,12 +420,46 @@ function Compare() {
                                     </div>
 
                                     <div className="max-w-[80%] rounded-2xl p-4 bg-slate-800/50 border border-white/10 text-gray-200">
-                                        <div className="text-sm leading-relaxed whitespace-pre-wrap">
-                                            {currentMessage.split('\n\n').map((paragraph, j) => (
-                                                <p key={j} className={j > 0 ? 'mt-3' : ''}>
-                                                    {paragraph}
-                                                </p>
-                                            ))}
+                                        <div className="text-sm leading-relaxed prose prose-invert prose-sm max-w-none">
+                                            <ReactMarkdown
+                                                remarkPlugins={[remarkGfm]}
+                                                components={{
+                                                    strong: ({ node, ...props }) => (
+                                                        <strong className="font-bold text-gold bg-gold/5 px-1 rounded" {...props} />
+                                                    ),
+                                                    em: ({ node, ...props }) => (
+                                                        <em className="italic text-gray-300" {...props} />
+                                                    ),
+                                                    h3: ({ node, ...props }) => (
+                                                        <h3 className="text-lg font-bold mt-6 mb-3 text-white border-b border-white/10 pb-1" {...props} />
+                                                    ),
+                                                    ul: ({ node, ...props }) => (
+                                                        <ul className="list-disc ml-6 my-3 space-y-2 text-gray-300" {...props} />
+                                                    ),
+                                                    ol: ({ node, ...props }) => (
+                                                        <ol className="list-decimal ml-6 my-3 space-y-2 text-gray-300" {...props} />
+                                                    ),
+                                                    li: ({ node, ...props }) => (
+                                                        <li className="leading-relaxed" {...props} />
+                                                    ),
+                                                    p: ({ node, ...props }) => (
+                                                        <p className="mb-4 leading-relaxed text-gray-200" {...props} />
+                                                    ),
+                                                    table: ({ node, ...props }) => (
+                                                        <div className="overflow-x-auto my-6 border border-white/10 rounded-lg">
+                                                            <table className="min-w-full divide-y divide-white/10" {...props} />
+                                                        </div>
+                                                    ),
+                                                    th: ({ node, ...props }) => (
+                                                        <th className="px-4 py-2 text-left text-xs font-bold text-gold uppercase tracking-wider" {...props} />
+                                                    ),
+                                                    td: ({ node, ...props }) => (
+                                                        <td className="px-4 py-2 text-sm text-gray-300 border-t border-white/5" {...props} />
+                                                    ),
+                                                }}
+                                            >
+                                                {currentMessage}
+                                            </ReactMarkdown>
                                             <span className="inline-block w-2 h-4 bg-gold animate-pulse ml-1"></span>
                                         </div>
                                     </div>

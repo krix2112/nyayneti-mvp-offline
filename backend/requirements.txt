@@ -14,6 +14,8 @@ llama-cpp-python==0.2.90
 # Semantic Search / Embeddings
 sentence-transformers==2.7.0
 numpy>=1.24.0
+faiss-cpu>=1.13.0
+rank_bm25==0.2.2
 
 # Testing
 pytest==8.3.3
