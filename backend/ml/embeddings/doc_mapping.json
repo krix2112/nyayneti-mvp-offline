@@ -90,13 +90,67 @@
     }
   },
   "State_Of_Punjab_vs_Navjot_Singh_Sidhu_And_Anr_on_6_December_2006.PDF": {
-    "start_idx": 217,
-    "end_idx": 258,
+    "start_idx": 1397,
+    "end_idx": 1438,
     "num_chunks": 41,
     "metadata": {
       "filename": "State_Of_Punjab_vs_Navjot_Singh_Sidhu_And_Anr_on_6_December_2006.PDF",
-      "file_size": 272202,
-      "upload_date": "2026-01-30T19:09:05.363230",
+      "file_size": 57079,
+      "citations": {
+        "case_names": [
+          "In Bhim Singh v. State of Haryana",
+          "The power of the Court to interfere in an appeal against acquittal has been given in Narendra Nath Khaware v. Parasnath Khaware and Ors",
+          "Shingara Singh v. State of Haryana",
+          "in Khanjanpal v. State of",
+          "In Yogendra Morarji v. State of Gujarat",
+          "ble Supreme Court in State of Karnataka v. Mudappa and Mohammad alias Biliya",
+          "State of Punjab v. Joginder Singh and Anr",
+          "and State\nof Karnataka v. Puttaraja",
+          "In Khanjan Pal v. State of",
+          "in State of Karnataka v. Mudappa",
+          "State of\nKarnataka v. Mudappa",
+          "In Deo Narain Mandal v. State of",
+          "in State of Karnataka v. Puttaraja",
+          "It has been very\naptly indicated in Dennis Councle MCG Dautha v. State of Callifornia"
+        ],
+        "ipc_sections": [
+          "Section 34 IPC",
+          "Section 323 IPC",
+          "Section 324 IPC"
+        ],
+        "crpc_sections": [
+          "Section 173 CrPC",
+          "Section 321 CrPC",
+          "Section 161 CrPC",
+          "Section 313 CrPC"
+        ],
+        "cpc_sections": [],
+        "articles": [
+          "Article 134"
+        ],
+        "acts": [
+          "but can also invoke Section 4 of the Probation of Offenders\nAct, 1958",
+          "the learned Counsels have argued that if the plea of imposition of fine and the plea that\nthe accused be set free under the Probation of Offenders Act, 1958",
+          "The authorities cited by the learned Counsel for the accused on setting them free by imposing a\nfine or under the Probation of Offenders Act, 1958",
+          "the High Court had considered the relevant material and then granted\nprobation under Section 4 of the Probation of Offenders Act, 1958"
+        ],
+        "year_citations": [],
+        "air_citations": [],
+        "scc_citations": []
+      },
+      "citation_count": {
+        "case_names": 14,
+        "ipc_sections": 3,
+        "crpc_sections": 4,
+        "cpc_sections": 0,
+        "articles": 1,
+        "acts": 4,
+        "year_citations": 0,
+        "air_citations": 0,
+        "scc_citations": 0
+      },
+      "upload_date": "2026-01-31T16:43:40.858904",
+      "total_pages": 1,
       "num_chunks": 41
     }
   },

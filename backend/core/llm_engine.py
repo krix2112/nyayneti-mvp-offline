@@ -308,7 +308,7 @@ Classification:"""
         scores.sort(key=lambda x: x[0], reverse=True)
         return [s[1] for s in scores[:top_k]]
 
-    def answer_question_stream(self, question: str):
+    def answer_question_stream(self, question: str, doc_id: Optional[str] = None):
         # Phase 3: Cache Check (Instant Response)
         cache_key = question.strip().lower()
         if cache_key in self.cache:
@@ -320,10 +320,13 @@ Classification:"""
         if self.vector_store:
             emb_model = self._get_embedding_model()
             q_emb = emb_model.encode(question) if emb_model else np.zeros(384)
+            # If doc_id is provided, focus exclusively on that document and increase top_k
+            search_k = 15 if doc_id else 5
             retrieved = self.vector_store.search(
                 query_embedding=q_emb,
                 query_text=question,
-                top_k=5,
+                top_k=search_k,
+                doc_ids=[doc_id] if doc_id else None,
                 include_neighbors=True
             )
         else:
@@ -342,6 +345,7 @@ Classification:"""
 - **NO HALLUCINATION**: NEVER mention "Anuradha Bhasin", "Union of India", or any other case NOT in the context.
 - **FILE NAMES**: Use the exact "SOURCE:" filenames provided. Do NOT invent PDF names.
 - **CITATIONS**: Use **Section X** bolding for items found in context.
+- **IDENTIFICATION**: Pay special attention to identifying details like names, dates, and vehicle numbers (e.g. Maruti Car No.).
 - **UNSURE**: If the answer is not in context, say "Context does not provide this information." Do NOT use your own knowledge of law.
 
 Context:
