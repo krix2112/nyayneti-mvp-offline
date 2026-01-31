@@ -265,28 +265,68 @@ export default function Dashboard() {
             )}
           </div>
 
-          {/* Quick Links */}
-          <div className="mt-12 grid grid-cols-2 gap-6">
+          {/* Power Features Grid */}
+          <div className="mt-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <Link
+              to="/draft"
+              className="p-6 bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 hover:border-gold/50 transition-all group lg:col-span-1"
+            >
+              <span className="material-symbols-outlined text-4xl text-orange-400 mb-3 block group-hover:scale-110 transition-transform">
+                auto_draw
+              </span>
+              <h4 className="font-bold text-base mb-1">Auto-Drafter</h4>
+              <p className="text-xs text-gray-400">Generate legal drafts</p>
+            </Link>
+
+            <Link
+              to="/strength"
+              className="p-6 bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 hover:border-gold/50 transition-all group lg:col-span-1"
+            >
+              <span className="material-symbols-outlined text-4xl text-green-400 mb-3 block group-hover:scale-110 transition-transform">
+                analytics
+              </span>
+              <h4 className="font-bold text-base mb-1">Strength Analysis</h4>
+              <p className="text-xs text-gray-400">Evaluate legal robustness</p>
+            </Link>
+
+            <Link
+              to="/viewer"
+              className="p-6 bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 hover:border-gold/50 transition-all group lg:col-span-1"
+            >
+              <span className="material-symbols-outlined text-4xl text-blue-400 mb-3 block group-hover:scale-110 transition-transform">
+                split_screen
+              </span>
+              <h4 className="font-bold text-base mb-1">Split Viewer</h4>
+              <p className="text-xs text-gray-400">View PDF & AI Chat</p>
+            </Link>
+          </div>
+
+          {/* Core Tools */}
+          <div className="mt-8 grid grid-cols-2 gap-6">
             <Link
               to="/my-research"
-              className="p-6 bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 hover:border-gold/50 transition-all group"
+              className="p-8 bg-slate-800/40 backdrop-blur-lg rounded-3xl border border-white/5 hover:border-gold/30 transition-all group flex items-center gap-6"
             >
-              <span className="material-symbols-outlined text-4xl text-gold mb-3 block group-hover:scale-110 transition-transform">
-                folder_open
-              </span>
-              <h4 className="font-bold text-lg mb-1">My Research</h4>
-              <p className="text-sm text-gray-400">View all uploaded documents</p>
+              <div className="size-16 bg-slate-900 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-all">
+                <span className="material-symbols-outlined text-4xl text-gold">folder_open</span>
+              </div>
+              <div className="text-left">
+                <h4 className="font-bold text-xl mb-1">My Research</h4>
+                <p className="text-sm text-gray-400">Global document repository</p>
+              </div>
             </Link>
 
             <Link
               to="/compare"
-              className="p-6 bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 hover:border-gold/50 transition-all group"
+              className="p-8 bg-slate-800/40 backdrop-blur-lg rounded-3xl border border-white/5 hover:border-gold/30 transition-all group flex items-center gap-6"
             >
-              <span className="material-symbols-outlined text-4xl text-gold mb-3 block group-hover:scale-110 transition-transform">
-                compare_arrows
-              </span>
-              <h4 className="font-bold text-lg mb-1">Compare Documents</h4>
-              <p className="text-sm text-gray-400">AI-powered comparison analysis</p>
+              <div className="size-16 bg-slate-900 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-all">
+                <span className="material-symbols-outlined text-4xl text-orange-400">compare_arrows</span>
+              </div>
+              <div className="text-left">
+                <h4 className="font-bold text-xl mb-1">Cross Comparison</h4>
+                <p className="text-sm text-gray-400">Analyze multiple documents</p>
+              </div>
             </Link>
           </div>
         </motion.div>

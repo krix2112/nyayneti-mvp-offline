@@ -466,3 +466,46 @@ Comparison Analysis:"""
             logger.error(f"Error during LLM comparison call: {e}", exc_info=True)
             yield f"\n\n[Analysis Error: {str(e)}]\n"
 
+    def analyze_document_for_drafting(self, text: str, template_type: str, fields: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        Analyze text to extract fields for a specific legal template.
+        Returns a dictionary of found values.
+        """
+        field_descriptions = "\n".join([f"- {f['name']}: {f['label']}" for f in fields])
+        
+        prompt = f"""### NyayNeti AI: Drafting Fact Extraction
+System: You are a legal data extractor. Extract the following information from the provided document text.
+Rules:
+1. ONLY extract information clearly stated in the text.
+2. If info is missing, use "NOT_FOUND".
+3. Return ONLY a valid JSON object.
+
+FIELDS TO EXTRACT:
+{field_descriptions}
+
+DOCUMENT TEXT:
+{text[:4000]}
+
+JSON RESULT:"""
+
+        try:
+            result = self._call_llm(prompt, max_tokens=1000, stream=False)
+            # Clean up JSON if LLM added markdown formatting
+            if "```json" in result:
+                result = result.split("```json")[-1].split("```")[0].strip()
+            elif "```" in result:
+                result = result.split("```")[-1].split("```")[0].strip()
+            
+            extracted_data = json.loads(result.strip())
+            
+            # Sub-analysis for Charge Sheet specific facts
+            if template_type == "charge_sheet" and "complaint_details" in extracted_data:
+                if extracted_data["complaint_details"] == "NOT_FOUND":
+                    # Try a more targeted search for misconduct in the text
+                    pass
+            
+            return extracted_data
+        except Exception as e:
+            logger.error(f"Field extraction failed: {e}")
+            return {f['name']: "NOT_FOUND" for f in fields}
+

@@ -290,5 +290,93 @@ export const apiClient = {
                 buffer = "";
             }
         }
+    },
+
+    /**
+     * Get legal document templates
+     */
+    async getTemplates() {
+        try {
+            const res = await fetchWithTimeout(`${API_BASE_URL}/api/templates`);
+            return await res.json();
+        } catch (error) {
+            handleAPIError(error, 'Get templates');
+        }
+    },
+
+    /**
+     * Generate document from template
+     */
+    async draftDocument(data) {
+        try {
+            const res = await fetchWithTimeout(`${API_BASE_URL}/api/draft-document`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            }, 120000);
+            return await res.json();
+        } catch (error) {
+            handleAPIError(error, 'Draft document');
+        }
+    },
+
+    /**
+     * Analyze a document to extract drafting fields
+     */
+    async analyzeDraftContext(data) {
+        try {
+            const res = await fetchWithTimeout(`${API_BASE_URL}/api/analyze-draft-context`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            }, 60000);
+            return await res.json();
+        } catch (error) {
+            handleAPIError(error, 'Analyze draft context');
+        }
+    },
+
+    /**
+     * Analyze document strength
+     */
+    async analyzeStrength(data) {
+        try {
+            const res = await fetchWithTimeout(`${API_BASE_URL}/api/analyze-strength`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            }, 60000);
+            return await res.json();
+        } catch (error) {
+            handleAPIError(error, 'Analyze strength');
+        }
+    },
+
+    /**
+     * Search by citation
+     */
+    async searchCitations(data) {
+        try {
+            const res = await fetchWithTimeout(`${API_BASE_URL}/api/search-citations`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            }, 30000);
+            return await res.json();
+        } catch (error) {
+            handleAPIError(error, 'Search citations');
+        }
+    },
+
+    /**
+     * Get citations for a document
+     */
+    async getCitations(docId) {
+        try {
+            const res = await fetchWithTimeout(`${API_BASE_URL}/api/citations/${docId}`);
+            return await res.json();
+        } catch (error) {
+            handleAPIError(error, 'Get citations');
+        }
     }
 };

@@ -5,6 +5,9 @@ import Homepage from './pages/Homepage';
 import Dashboard from './pages/Dashboard';
 import MyResearch from './pages/MyResearch';
 import Compare from './pages/Compare';
+import DocumentDrafter from './pages/DocumentDrafter';
+import StrengthAnalyzer from './pages/StrengthAnalyzer';
+import SmartViewer from './pages/SmartViewer';
 import StatusBar from './components/StatusBar';
 import { useKeyboardShortcuts, ShortcutsHint } from './hooks/useKeyboardShortcuts.jsx';
 
@@ -19,6 +22,9 @@ function AppContent() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/my-research" element={<MyResearch />} />
         <Route path="/compare" element={<Compare />} />
+        <Route path="/draft" element={<DocumentDrafter />} />
+        <Route path="/strength" element={<StrengthAnalyzer />} />
+        <Route path="/viewer" element={<SmartViewer />} />
       </Routes>
 
       <StatusBar />

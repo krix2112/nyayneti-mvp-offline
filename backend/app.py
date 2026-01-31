@@ -2,6 +2,7 @@ import os
 import json
 import logging
 import numpy as np
+from datetime import datetime
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -10,11 +11,19 @@ from flask.json.provider import DefaultJSONProvider
 from flask_cors import CORS
 
 from config import get_settings
-from core.pdf_processor import extract_text_from_pdf, split_text_into_chunks
+from core.pdf_processor import (
+    extract_text_from_pdf, 
+    split_text_into_chunks, 
+    split_text_into_chunks_with_pages,
+    get_pdf_page_count
+)
 from core.citation_parser import extract_citations
 from core.llm_engine import LLMEngine
 from core.comparator import Comparator
 from core.vector_store import PersistentVectorStore
+from core.document_drafter import get_document_drafter
+from core.strength_analyzer import get_strength_analyzer
+from core.citation_extractor import citation_extractor
 from utils import allowed_file, ensure_dirs
 
 # Configure logging
@@ -93,6 +102,8 @@ def create_app() -> Flask:
     )
 
     comparator = Comparator(llm_engine=llm_engine)
+    drafter = get_document_drafter(llm_engine=llm_engine)
+    analyzer = get_strength_analyzer(llm_engine=llm_engine)
 
     # --- API ROUTES ---
     @app.route("/api/health")
@@ -130,11 +141,19 @@ def create_app() -> Flask:
                 text = extract_text_from_pdf(path)
                 logger.info(f"✅ Text extracted: {len(text)} characters")
                 
-                # Step 2: Split into chunks
-                yield f"data: {json.dumps({'progress': 30, 'status': 'Splitting into chunks...'})}\n\n"
+                # Step 2: Split into chunks with page info and extract citations
+                yield f"data: {json.dumps({'progress': 25, 'status': 'Processing PDF structure and citations...'})}\n\n"
                 time.sleep(0.1)
-                chunks = split_text_into_chunks(text, max_chars=1500)
-                logger.info(f"Created {len(chunks)} chunks")
+                
+                # Extract citations from full text
+                doc_citations = citation_extractor.extract_all_citations(text)
+                citation_counts = citation_extractor.count_citations(text)
+                logger.info(f"Citations found: {citation_counts}")
+                
+                # Split into chunks with page info for better highlighting
+                chunks_info = split_text_into_chunks_with_pages(path, max_chars=1500)
+                chunks = [c['text'] for c in chunks_info]
+                logger.info(f"Created {len(chunks)} chunks with page mapping")
                 
                 # Step 3: Generate embeddings
                 yield f"data: {json.dumps({'progress': 50, 'status': 'Generating AI embeddings (this may take a moment)...'})}\n\n"
@@ -157,16 +176,30 @@ def create_app() -> Flask:
                 if vector_store is None:
                     raise Exception("Vector store not initialized")
                 
+                # Prepare chunk-level metadata
+                chunk_meta_list = []
+                for chunk_info in chunks_info:
+                    chunk_meta_list.append({
+                        'page': chunk_info.get('primary_page', 1),
+                        'pages': chunk_info.get('pages', []),
+                        'bboxes': chunk_info.get('bboxes', [])
+                    })
+                
                 metadata = {
                     'filename': file.filename,
-                    'file_size': len(text)
+                    'file_size': len(text),
+                    'citations': doc_citations,
+                    'citation_count': citation_counts,
+                    'upload_date': datetime.now().isoformat(),
+                    'total_pages': get_pdf_page_count(path) if 'get_pdf_page_count' in globals() else 1
                 }
                 
                 result = vector_store.add_document(
                     doc_id=file.filename,
                     chunks=chunks,
                     embeddings=embeddings,
-                    metadata=metadata
+                    metadata=metadata,
+                    chunk_metadata=chunk_meta_list
                 )
                 
                 logger.info(f"Successfully indexed document: {result}")
@@ -282,6 +315,135 @@ def create_app() -> Flask:
         except Exception as e:
             logger.error(f"Delete document failed: {e}", exc_info=True)
             return jsonify({'error': str(e)}), 500
+
+    # --- POWER FEATURES ENDPOINTS ---
+    
+    @app.route("/api/templates", methods=["GET"])
+    def get_templates():
+        """Get all legal document templates"""
+        return jsonify(drafter.get_templates())
+
+    @app.route("/api/draft-document", methods=["POST"])
+    def draft_document():
+        """Generate a legal document from template"""
+        data = request.json
+        template_type = data.get("template_type")
+        user_inputs = data.get("user_inputs")
+        enhance = data.get("enhance", True)
+        
+        if not template_type or not user_inputs:
+            return jsonify({"error": "Template type and inputs required"}), 400
+            
+        result = drafter.generate_document(template_type, user_inputs, enhance_with_llm=enhance)
+        return jsonify(result)
+
+    @app.route("/api/analyze-draft-context", methods=["POST"])
+    def analyze_draft_context():
+        """Analyze a PDF to extract information for a specific template"""
+        data = request.json
+        doc_id = data.get("doc_id")
+        template_type = data.get("template_type")
+        
+        if not doc_id or not template_type:
+            return jsonify({"error": "doc_id and template_type required"}), 400
+            
+        # Get document text
+        doc = next((d for d in vector_store.documents if d['doc_id'] == doc_id), None)
+        if not doc:
+            # Try reloading index if not found
+            if hasattr(llm_engine, '_load_index'):
+                chunks = llm_engine._load_index()
+                doc_chunks = [ch for ch in chunks if ch.doc_id == doc_id]
+                if doc_chunks:
+                    text = "\n".join([ch.text for ch in doc_chunks])
+                else:
+                    return jsonify({"error": "Document not found"}), 404
+            else:
+                return jsonify({"error": "Document not found"}), 404
+        else:
+            text = doc.get('text', "")
+            if not text:
+                # Reconstruct text from chunks if full text not in meta
+                doc_chunks = [ch for ch in vector_store.documents if ch['doc_id'] == doc_id]
+                text = "\n".join([ch['text'] for ch in doc_chunks])
+
+        template = drafter.get_template(template_type)
+        if not template:
+            return jsonify({"error": "Invalid template type"}), 400
+            
+        extracted_fields = llm_engine.analyze_document_for_drafting(text, template_type, template['fields'])
+        
+        return jsonify({
+            "success": True,
+            "extracted_fields": extracted_fields,
+            "template_name": template['name']
+        })
+
+    @app.route("/api/analyze-strength", methods=["POST"])
+    def analyze_strength():
+        """Analyze legal document strength"""
+        doc_id = request.json.get("doc_id")
+        text = request.json.get("text")
+        
+        if doc_id:
+            # Find document text from vector store
+            doc = next((d for d in vector_store.documents if d['doc_id'] == doc_id), None)
+            if not doc:
+                return jsonify({"error": "Document not found"}), 404
+            text = doc['text']
+        
+        if not text:
+            return jsonify({"error": "Text or doc_id required"}), 400
+            
+        result = analyzer.analyze_document(text)
+        return jsonify(result)
+
+    @app.route("/api/search-citations", methods=["POST"])
+    def search_by_citation():
+        """Search documents by specific citation"""
+        data = request.json
+        citation = data.get("citation")
+        citation_type = data.get("citation_type", "all")
+        
+        if not citation:
+            return jsonify({"error": "Citation query required"}), 400
+            
+        # Get all documents from vector store
+        all_docs = []
+        doc_ids = set()
+        for doc in vector_store.documents:
+            if doc['doc_id'] not in doc_ids:
+                all_docs.append(doc)
+                doc_ids.add(doc['doc_id'])
+                
+        results = citation_extractor.search_documents_by_citation(all_docs, citation, citation_type)
+        return jsonify({"results": results})
+
+    @app.route("/api/citations/<doc_id>", methods=["GET"])
+    def get_doc_citations(doc_id):
+        """Get all citations for a specific document"""
+        doc = next((d for d in vector_store.documents if d['doc_id'] == doc_id), None)
+        if not doc:
+            return jsonify({"error": "Document not found"}), 404
+            
+        citations = citation_extractor.extract_all_citations(doc['text'])
+        counts = citation_extractor.count_citations(doc['text'])
+        return jsonify({"citations": citations, "counts": counts})
+
+    @app.route("/api/document/<doc_id>/pdf", methods=["GET"])
+    def serve_pdf(doc_id):
+        """Serve PDF file for viewer"""
+        # doc_id is typically the filename in our current setup
+        path = os.path.join(settings.UPLOAD_DIR, doc_id)
+        if not os.path.exists(path):
+            return jsonify({"error": "PDF not found"}), 404
+            
+        return send_from_directory(settings.UPLOAD_DIR, doc_id, mimetype='application/pdf')
+
+    @app.route("/api/download/<filename>", methods=["GET"])
+    def download_generated(filename):
+        """Download generated DOCX/TXT file"""
+        return send_from_directory("generated_documents", filename, as_attachment=True)
 
     # --- FRONTEND SERVING ---
     @app.route("/", defaults={"path": ""})

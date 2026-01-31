@@ -106,7 +106,8 @@ class PersistentVectorStore:
         doc_id: str,
         chunks: List[str],
         embeddings: np.ndarray,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
+        chunk_metadata: Optional[List[Dict[str, Any]]] = None
     ) -> Dict[str, Any]:
         """
         Add a document to the vector store.
@@ -116,6 +117,7 @@ class PersistentVectorStore:
             chunks: List of text chunks
             embeddings: Numpy array of shape (n_chunks, dimension)
             metadata: Optional document metadata
+            chunk_metadata: Optional list of metadata for each chunk
         
         Returns:
             Dict with operation results
@@ -127,6 +129,11 @@ class PersistentVectorStore:
             # Validate inputs
             if len(chunks) == 0:
                 raise ValueError("No chunks provided")
+            
+            if chunk_metadata and len(chunk_metadata) != len(chunks):
+                raise ValueError(
+                    f"Number of chunk_metadata ({len(chunk_metadata)}) doesn't match chunks ({len(chunks)})"
+                )
             
             # Convert embeddings to float32 numpy array
             embeddings = np.array(embeddings, dtype=np.float32)
@@ -167,11 +174,17 @@ class PersistentVectorStore:
             # Add chunks to document storage
             for i, chunk_text in enumerate(chunks):
                 global_chunk_id = start_idx + i
+                
+                # Combine base metadata with chunk-specific metadata
+                combined_metadata = metadata.copy()
+                if chunk_metadata:
+                    combined_metadata.update(chunk_metadata[i])
+                
                 chunk = DocumentChunk(
                     doc_id=doc_id,
                     chunk_id=global_chunk_id,
                     text=chunk_text,
-                    metadata=metadata.copy()
+                    metadata=combined_metadata
                 )
                 self.documents.append(chunk)
             

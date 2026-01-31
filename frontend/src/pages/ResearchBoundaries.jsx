@@ -354,7 +354,7 @@ function ResearchBoundaries() {
                   </svg>
                 </div>
                 <span className="text-lg font-bold tracking-tight">
-                  <span className="font-serif italic text-accent-gold normal-case">न्याय</span>NETI CORE
+                  <span className="text-gold font-devanagari">न्याय-नीति</span> NyayNeti
                 </span>
               </div>
               <p className="text-slate-500 text-[10px] uppercase tracking-widest font-bold">

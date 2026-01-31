@@ -89,7 +89,7 @@ export default function Homepage() {
 
             {/* Title */}
             <h1 className="text-6xl md:text-8xl font-bold mb-4 tracking-tight">
-              <span className="text-gold font-devanagari">न्याय नेटी</span>
+              <span className="text-gold font-devanagari">न्याय-नीति</span>
             </h1>
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
               NyayNeti
@@ -328,8 +328,8 @@ export default function Homepage() {
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2">
               <span className="text-xl font-bold">
-                <span className="text-gold">न्याय</span>
-                Neti
+                <span className="text-gold">न्याय-नीति</span>
+                <span className="ml-1">NyayNeti</span>
               </span>
             </div>
             <p className="text-xs text-gray-500">
