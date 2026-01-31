@@ -78,13 +78,13 @@ const SmartViewer = () => {
         setIsTyping(true);
 
         try {
-            // Create a stream from compare-pdf (reusing logic)
-            const response = await fetch('http://localhost:8000/api/compare-pdf', {
+            // Updated to call query/stream with doc_id for high-precision targeted answers
+            const response = await fetch('http://localhost:8000/api/query/stream', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    selected_pdf_id: selectedDocId,
-                    query: userMsg
+                    doc_id: selectedDocId,
+                    question: userMsg
                 }),
             });
 

@@ -249,7 +249,9 @@ def create_app() -> Flask:
 
     @app.route("/api/query/stream", methods=["POST"])
     def query():
-        q = request.json.get("question")
+        data = request.json
+        q = data.get("question")
+        doc_id = data.get("doc_id") # Optional document restriction
         
         # Phase 6: Intelligent Input Validation
         is_valid, error_msg = llm_engine.is_query_meaningful(q)
@@ -260,7 +262,7 @@ def create_app() -> Flask:
             return Response(generate_error(), mimetype='text/event-stream')
 
         from flask import Response
-        return Response(llm_engine.answer_question_stream(q), mimetype='text/event-stream')
+        return Response(llm_engine.answer_question_stream(q, doc_id=doc_id), mimetype='text/event-stream')
 
     @app.route("/api/compare", methods=["POST"])
     def compare():
