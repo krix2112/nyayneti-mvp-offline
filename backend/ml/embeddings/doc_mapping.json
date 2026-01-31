@@ -44,8 +44,8 @@
     }
   },
   "Ranjithkumar_vs_State_Rep_By_Inspector_Of_Police_on_8_March_2012.PDF": {
-    "start_idx": 875,
-    "end_idx": 917,
+    "start_idx": 1355,
+    "end_idx": 1397,
     "num_chunks": 42,
     "metadata": {
       "filename": "Ranjithkumar_vs_State_Rep_By_Inspector_Of_Police_on_8_March_2012.PDF",
@@ -84,7 +84,7 @@
         "air_citations": 1,
         "scc_citations": 0
       },
-      "upload_date": "2026-01-31T13:37:52.433071",
+      "upload_date": "2026-01-31T15:54:27.492160",
       "total_pages": 1,
       "num_chunks": 42
     }
@@ -101,13 +101,13 @@
     }
   },
   "State_vs_Sushil_Sharma_on_19_February_2007.PDF": {
-    "start_idx": 258,
-    "end_idx": 399,
+    "start_idx": 729,
+    "end_idx": 870,
     "num_chunks": 141,
     "metadata": {
       "filename": "State_vs_Sushil_Sharma_on_19_February_2007.PDF",
-      "file_size": 386427,
-      "upload_date": "2026-01-30T19:09:25.157288",
+      "file_size": 198218,
+      "upload_date": "2026-01-31T14:15:52.611617",
       "num_chunks": 141
     }
   },

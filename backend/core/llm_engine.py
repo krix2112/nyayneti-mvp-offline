@@ -313,7 +313,6 @@ Classification:"""
         cache_key = question.strip().lower()
         if cache_key in self.cache:
             logger.info(f"Cache hit for query: {question[:30]}...")
-            yield f"DATA: {json.dumps({'is_cached': True})}\n\n"
             yield self.cache[cache_key]
             return
 
@@ -452,8 +451,7 @@ Comparison Analysis:"""
             "total_documents": len(other_docs) + 1
         }
         
-        logger.info(f"📊 Sending comparison metadata for {selected_pdf_id} against {len(other_docs)} items")
-        yield f"DATA: {json.dumps(metadata)}\n\n"
+        logger.info(f"📊 Running comparison for {selected_pdf_id} against {len(other_docs)} items")
         
         token_count = 0
         try:

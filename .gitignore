@@ -41,9 +41,14 @@ ml/models/**/*.gguf
 backend/models/embeddings/*
 !backend/models/embeddings/.gitkeep
 
+# TTS Models (Piper ONNX files ~50-100MB each)
+backend/models/tts/*
+!backend/models/tts/.gitkeep
+
 # Embeddings database (user-generated)
 ml/embeddings/*.pkl
 ml/embeddings/*.jsonl
+backend/ml/embeddings/
 
 # ==========================================
 # USER DATA

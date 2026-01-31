@@ -19,6 +19,8 @@ import PDFViewer from '../components/PDFViewer';
 import { apiClient } from '../api/client';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import VoiceInput from '../components/VoiceInput';
+import VoiceOutput from '../components/VoiceOutput';
 
 const SmartViewer = () => {
     const location = useLocation();
@@ -101,7 +103,14 @@ const SmartViewer = () => {
                 if (done) break;
 
                 const chunk = decoder.decode(value);
-                streamedContent += chunk;
+
+                // Process metadata and filter logs
+                const lines = chunk.split('\n');
+                const filteredChunk = lines
+                    .filter(line => !line.startsWith('DATA:'))
+                    .join('\n');
+
+                streamedContent += filteredChunk;
 
                 setMessages(prev => {
                     const last = prev[prev.length - 1];
@@ -216,6 +225,13 @@ const SmartViewer = () => {
                                         >
                                             {msg.content}
                                         </ReactMarkdown>
+
+                                        {/* Voice Output for AI messages */}
+                                        {msg.type === 'assistant' && msg.content && (
+                                            <div className="mt-3 pt-3 border-t border-white/5">
+                                                <VoiceOutput text={msg.content} />
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             ))}
@@ -255,8 +271,17 @@ const SmartViewer = () => {
                                     value={query}
                                     onChange={(e) => setQuery(e.target.value)}
                                     onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                                    className="w-full bg-slate-900 border border-white/5 rounded-2xl py-4 pl-4 pr-12 text-sm focus:outline-none focus:border-gold transition-all"
+                                    className="w-full bg-slate-900 border border-white/5 rounded-2xl py-4 pl-4 pr-24 text-sm focus:outline-none focus:border-gold transition-all"
                                 />
+
+                                {/* Voice Input Button */}
+                                <div className="absolute right-14 top-2.5">
+                                    <VoiceInput
+                                        onTranscription={(text) => setQuery(text)}
+                                        language={null}
+                                    />
+                                </div>
+
                                 <button
                                     onClick={handleSend}
                                     disabled={!query.trim()}
