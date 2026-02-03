@@ -128,7 +128,8 @@ const VoiceInput = ({ onTranscription, language = null }) => {
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error || 'Transcription failed');
+                const msg = errorData.details ? `${errorData.error}: ${errorData.details}` : (errorData.error || 'Transcription failed');
+                throw new Error(msg);
             }
 
             const data = await response.json();

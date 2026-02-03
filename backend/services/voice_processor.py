@@ -30,6 +30,7 @@ class WhisperTranscriber:
         self.device = device
         self.model = None
         self._model_loaded = False
+        self._last_error = ""
         
         logger.info(f"WhisperTranscriber initialized: model={model_size}, device={device}")
     
@@ -63,11 +64,15 @@ class WhisperTranscriber:
             self._model_loaded = True
             return True
             
-        except ImportError:
-            logger.error("faster-whisper not installed. Run: pip install faster-whisper")
+        except ImportError as e:
+            err = f"faster-whisper dependencies missing: {e}. Run: pip install faster-whisper"
+            logger.error(err)
+            self._last_error = err
             return False
         except Exception as e:
-            logger.error(f"Failed to load Whisper model: {e}", exc_info=True)
+            err = f"Failed to load Whisper model ({self.model_size}): {str(e)}"
+            logger.error(err, exc_info=True)
+            self._last_error = err
             return False
     
     def transcribe(
@@ -93,7 +98,7 @@ class WhisperTranscriber:
         """
         # Load model if not already loaded
         if not self._load_model():
-            return False, {'error': 'Failed to load Whisper model'}
+            return False, {'error': f'Failed to load Whisper model: {self._last_error}'}
         
         try:
             logger.info(f"[VOICE] Transcribing audio: {audio_path}")
@@ -102,16 +107,28 @@ class WhisperTranscriber:
             start_time = time.time()
             
             # Transcribe with faster-whisper
+            # Relaxed VAD settings to capture quieter speech
             segments, info = self.model.transcribe(
                 audio_path,
                 language=language,
                 beam_size=5,
                 vad_filter=True,  # Voice activity detection
-                vad_parameters=dict(min_silence_duration_ms=500)
+                vad_parameters=dict(
+                    min_silence_duration_ms=1000,  # Increased to reduce false negatives
+                    threshold=0.3  # Lower threshold = more sensitive to quiet speech
+                )
             )
             
             # Combine all segments into full text
-            full_text = " ".join([segment.text for segment in segments])
+            segments_list = list(segments)
+            logger.info(f"[VOICE] Detected {len(segments_list)} segments")
+            
+            full_text = " ".join([segment.text for segment in segments_list])
+            
+            if not full_text.strip():
+                logger.warning(f"[VOICE] ⚠️ Empty transcription! Audio duration: {info.duration if hasattr(info, 'duration') else 'unknown'}s")
+                logger.warning(f"[VOICE] Detected language: {info.language if hasattr(info, 'language') else 'unknown'}")
+                logger.warning(f"[VOICE] Try speaking louder or closer to the microphone")
             
             transcription_time = time.time() - start_time
             

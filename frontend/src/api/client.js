@@ -47,6 +47,34 @@ async function fetchWithTimeout(url, options = {}, timeout = 60000) {
  */
 export const apiClient = {
     /**
+     * Generic POST method for any endpoint
+     */
+    async post(endpoint, data) {
+        try {
+            const res = await fetchWithTimeout(`${API_BASE_URL}/api${endpoint}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            }, 120000);
+            return await res.json();
+        } catch (error) {
+            handleAPIError(error, `POST ${endpoint}`);
+        }
+    },
+
+    /**
+     * Generic GET method for any endpoint
+     */
+    async get(endpoint) {
+        try {
+            const res = await fetchWithTimeout(`${API_BASE_URL}/api${endpoint}`);
+            return await res.json();
+        } catch (error) {
+            handleAPIError(error, `GET ${endpoint}`);
+        }
+    },
+
+    /**
      * Check if backend is reachable
      */
     async checkHealth() {

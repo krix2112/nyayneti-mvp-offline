@@ -519,3 +519,84 @@ class PersistentVectorStore:
         except Exception as e:
             logger.error(f"Failed to list documents: {e}", exc_info=True)
             return []
+    
+    def search_citations(self, term: str, use_ai: bool = False, top_k: int = 20):
+        """
+        Search for citations/mentions of a term across all documents.
+        
+        Args:
+            term: Citation to search for (e.g., "Article 21", "Section 420 IPC")
+            use_ai: Whether to use semantic search (True) or keyword search (False)
+            top_k: Number of results to return
+        
+        Returns:
+            List of results with document info, context, and relevance
+        """
+        results = []
+        
+        try:
+            if use_ai and self.embedding_model:
+                # Semantic search using embeddings
+                logger.info(f"🔍 [CITATION] AI search for: {term}")
+                query_embedding = self.embedding_model.encode([term])
+                distances, indices = self.index.search(query_embedding, min(top_k * 2, len(self.documents)))
+                
+                for idx, dist in zip(indices[0], distances[0]):
+                    if idx < len(self.documents):
+                        chunk = self.documents[idx]
+                        # Only include if somewhat relevant (distance < 1.5)
+                        if dist < 1.5:
+                            results.append({
+                                'doc_id': chunk.doc_id,
+                                'text': chunk.text[:500],  # First 500 chars for preview
+                                'full_text': chunk.text,
+                                'relevance': float(1 / (1 + dist)),  # Convert distance to score
+                                'type': self._detect_citation_type(term),
+                                'chunk_id': chunk.chunk_id,
+                                'metadata': chunk.metadata
+                            })
+            else:
+                # Keyword search - faster, more precise
+                logger.info(f"🔍 [CITATION] Keyword search for: {term}")
+                term_lower = term.lower()
+                for chunk in self.documents:
+                    if term_lower in chunk.text.lower():
+                        # Calculate relevance based on frequency
+                        count = chunk.text.lower().count(term_lower)
+                        relevance = min(1.0, count / 10.0)  # Cap at 1.0
+                        
+                        results.append({
+                            'doc_id': chunk.doc_id,
+                            'text': chunk.text[:500],
+                            'full_text': chunk.text,
+                            'relevance': relevance,
+                            'type': self._detect_citation_type(term),
+                            'chunk_id': chunk.chunk_id,
+                            'metadata': chunk.metadata,
+                            'count': count
+                        })
+            
+            # Sort by relevance
+            results.sort(key=lambda x: x['relevance'], reverse=True)
+            logger.info(f"✅ [CITATION] Found {len(results)} results")
+            return results[:top_k]
+        
+        except Exception as e:
+            logger.error(f"❌ [CITATION] Search failed: {e}", exc_info=True)
+            return []
+    
+    def _detect_citation_type(self, term: str):
+        """Detect what type of citation this is"""
+        term_lower = term.lower()
+        if 'article' in term_lower:
+            return 'constitutional'
+        elif 'section' in term_lower and 'ipc' in term_lower:
+            return 'ipc'
+        elif 'section' in term_lower and ('crpc' in term_lower or 'cr.p.c' in term_lower):
+            return 'crpc'
+        elif ' v.' in term_lower or ' vs' in term_lower or ' v ' in term_lower:
+            return 'case_law'
+        elif 'act' in term_lower:
+            return 'legislation'
+        else:
+            return 'general'

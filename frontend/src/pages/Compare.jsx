@@ -131,8 +131,20 @@ function Compare() {
                 }
 
                 if (metadataProcessed && buffer) {
-                    // Stream the content word by word
-                    streamedContent += buffer;
+                    // Filter out status messages and update progressStatus
+                    const lines = buffer.split('\n');
+                    let cleanChunk = '';
+                    for (const line of lines) {
+                        if (line.startsWith('[STATUS]:')) {
+                            const statusText = line.replace('[STATUS]:', '').trim();
+                            setProgressStatus(statusText);
+                            continue;
+                        }
+                        cleanChunk += line + (lines.length > 1 ? '\n' : '');
+                    }
+
+                    // Stream the content
+                    streamedContent += cleanChunk;
                     setCurrentMessage(streamedContent);
                     setProgress(90);
                     buffer = '';
@@ -163,6 +175,27 @@ function Compare() {
         handleAnalyze('');
     };
 
+    // Helper to render think block
+    const ReasoningBlock = ({ content }) => {
+        const thinkMatch = content.match(/<think>([\s\S]*?)(?:<\/think>|$)/i);
+        if (!thinkMatch) return null;
+
+        return (
+            <div className="mb-4 bg-slate-950/40 rounded-xl border border-white/10 p-4 overflow-hidden group">
+                <div className="flex items-center gap-2 mb-2 text-[10px] font-black uppercase tracking-tighter text-blue-400 opacity-50">
+                    <span className="material-symbols-outlined text-[10px]">psychology</span> AI Internal Reasoning
+                </div>
+                <div className="text-xs text-slate-400 italic font-medium leading-relaxed">
+                    {thinkMatch[1].trim()}
+                </div>
+            </div>
+        );
+    };
+
+    const cleanContent = (text) => {
+        return text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+    };
+
     return (
         <div className="flex h-screen bg-slate-900 text-white font-display overflow-hidden">
             {/* Left Panel - 30% */}
@@ -170,7 +203,7 @@ function Compare() {
                 {/* Header */}
                 <div className="p-6 border-b border-white/10">
                     <Link to="/" className="flex items-center mb-4">
-                        <img src="/logo.png" alt="NyayNeti Logo" className="h-10 w-auto object-contain" />
+                        <img src="/logo.png" alt="NyayNeti Logo" className="h-14 w-auto object-contain" />
                     </Link>
                     <h2 className="text-2xl font-bold text-gold">PDF Comparison</h2>
                     <p className="text-sm text-gray-400 mt-1">AI-powered document analysis</p>
@@ -350,6 +383,7 @@ function Compare() {
                                         }`}>
                                         {msg.type === 'assistant' ? (
                                             <div className="text-sm leading-relaxed prose prose-invert prose-sm max-w-none">
+                                                <ReasoningBlock content={msg.content} />
                                                 <ReactMarkdown
                                                     remarkPlugins={[remarkGfm]}
                                                     components={{
@@ -390,7 +424,7 @@ function Compare() {
                                                         ),
                                                     }}
                                                 >
-                                                    {msg.content}
+                                                    {cleanContent(msg.content)}
                                                 </ReactMarkdown>
                                             </div>
                                         ) : (
@@ -421,6 +455,7 @@ function Compare() {
 
                                     <div className="max-w-[80%] rounded-2xl p-4 bg-slate-800/50 border border-white/10 text-gray-200">
                                         <div className="text-sm leading-relaxed prose prose-invert prose-sm max-w-none">
+                                            <ReasoningBlock content={currentMessage} />
                                             <ReactMarkdown
                                                 remarkPlugins={[remarkGfm]}
                                                 components={{
@@ -458,7 +493,7 @@ function Compare() {
                                                     ),
                                                 }}
                                             >
-                                                {currentMessage}
+                                                {cleanContent(currentMessage)}
                                             </ReactMarkdown>
                                             <span className="inline-block w-2 h-4 bg-gold animate-pulse ml-1"></span>
                                         </div>

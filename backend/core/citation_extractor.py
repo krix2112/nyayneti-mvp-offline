@@ -74,6 +74,7 @@ class CitationExtractor:
     }
     
     def __init__(self):
+        self._cache: Dict[str, Dict[str, Any]] = {}
         logger.info("Citation Extractor initialized")
     
     def extract_all_citations(self, text: str) -> Dict[str, List[str]]:
@@ -158,119 +159,57 @@ class CitationExtractor:
                 citations['scc_citations'].append(citation)
         
         return citations
-    
-    def find_citation_locations(self, text: str, citation: str) -> List[int]:
-        """
-        Find all character positions where citation appears.
-        
-        Args:
-            text: Document text
-            citation: Citation to search for
-            
-        Returns:
-            List of character positions
-        """
-        locations = []
-        start = 0
-        citation_lower = citation.lower()
-        text_lower = text.lower()
-        
-        while True:
-            pos = text_lower.find(citation_lower, start)
-            if pos == -1:
-                break
-            locations.append(pos)
-            start = pos + len(citation)
-        
-        return locations
-    
+
     def count_citations(self, text: str) -> Dict[str, int]:
-        """
-        Count how many times each citation type appears.
-        
-        Args:
-            text: Document text
-            
-        Returns:
-            Dict mapping citation types to counts
-        """
-        all_citations = self.extract_all_citations(text)
+        """Count citations by type."""
+        all_cits = self.extract_all_citations(text)
         return {
-            citation_type: len(citation_list)
-            for citation_type, citation_list in all_citations.items()
+            'total': sum(len(v) for v in all_cits.values()),
+            'case_names': len(all_cits.get('case_names', [])),
+            'ipc_sections': len(all_cits.get('ipc_sections', [])),
+            'crpc_sections': len(all_cits.get('crpc_sections', [])),
+            'articles': len(all_cits.get('articles', [])),
+            'acts': len(all_cits.get('acts', []))
         }
     
-    def get_total_citations(self, text: str) -> int:
-        """Get total number of unique citations found."""
-        all_citations = self.extract_all_citations(text)
-        return sum(len(v) for v in all_citations.values())
-    
-    def search_documents_by_citation(
-        self, 
-        documents: List[Dict], 
-        citation: str,
-        citation_type: str = 'all'
-    ) -> List[Dict]:
+    def extract_all_citations_comprehensive(self, text: str, doc_id: str | None = None) -> Dict[str, Any]:
         """
-        Search documents for a specific citation.
-        
-        Args:
-            documents: List of documents with 'text' and metadata
-            citation: Citation to search for
-            citation_type: Type of citation ('all' for any type)
-            
-        Returns:
-            List of matching documents with citation counts
+        Extends extract_all_citations with counts for EVERY tokenized word
+        to support the specific 'Citation Finder' search logic.
         """
-        results = []
-        
-        for doc in documents:
-            text = doc.get('text', '')
-            doc_citations = self.extract_all_citations(text)
-            
-            found = False
-            count = 0
-            
-            if citation_type == 'all':
-                # Search all citation types
-                for cit_list in doc_citations.values():
-                    for cit in cit_list:
-                        if citation.lower() in cit.lower():
-                            found = True
-                            count = text.lower().count(citation.lower())
-                            break
-                    if found:
-                        break
-            else:
-                # Search specific citation type
-                type_map = {
-                    'article': 'articles',
-                    'ipc': 'ipc_sections',
-                    'crpc': 'crpc_sections',
-                    'case': 'case_names',
-                    'act': 'acts'
-                }
-                search_key = type_map.get(citation_type, citation_type)
-                if search_key in doc_citations:
-                    for cit in doc_citations[search_key]:
-                        if citation.lower() in cit.lower():
-                            found = True
-                            count = text.lower().count(citation.lower())
-                            break
-            
-            if found:
-                results.append({
-                    'doc_id': doc.get('doc_id', 'unknown'),
-                    'filename': doc.get('metadata', {}).get('filename', 'unknown'),
-                    'count': count,
-                    'all_citations': doc_citations
-                })
-        
-        # Sort by count (most citations first)
-        results.sort(key=lambda x: x['count'], reverse=True)
-        
-        return results
+        if doc_id and doc_id in self._cache:
+            return self._cache[doc_id]
 
+        base = self.extract_all_citations(text)
+        
+        # Calculate counts for all unique tokens/phrases for the 'finder'
+        counts = {}
+        # Simple word-based counting for the search term logic
+        words = re.findall(r'\w+', text.lower())
+        for word in words:
+            counts[word] = counts.get(word, 0) + 1
+            
+        # Also count the specific citations found
+        for cat in base:
+            if isinstance(base[cat], list):
+                for cit in base[cat]:
+                    counts[cit.lower()] = counts.get(cit.lower(), 0) + 1
+        
+        base['counts'] = counts
+        
+        if doc_id:
+            self._cache[doc_id] = base
+            
+        return base
+
+    def classify_citation_type(self, term: str) -> str:
+        """Categorizes a search term into legal types"""
+        t = term.lower()
+        if "section" in t or re.match(r'u/s\s+\d+', t): return "Statute/Section"
+        if "article" in t: return "Constitutional"
+        if " v. " in t or " vs " in t: return "Case Law"
+        if "act" in t: return "Legislation"
+        return "Legal Term"
 
 # Singleton instance
 citation_extractor = CitationExtractor()

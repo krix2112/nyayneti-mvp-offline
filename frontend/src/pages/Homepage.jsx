@@ -1,12 +1,22 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { FileText, CloudOff, Users, Upload, Cpu, Network, TrendingUp, Rocket, Globe, Mic, ScanLine, GitBranch, Sparkles, Zap, Shield, Brain } from 'lucide-react';
 import { apiClient } from '../api/client';
 
 export default function Homepage() {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      setMousePosition({ x: e.clientX, y: e.clientY });
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
 
   const handleUploadClick = () => {
     fileInputRef.current?.click();
@@ -29,8 +39,23 @@ export default function Homepage() {
   };
 
   return (
-    <div className="min-h-screen bg-navy-900 overflow-x-hidden text-white font-display">
-      {/* Hidden file input */}
+    <div className="min-h-screen bg-slate-950 overflow-x-hidden text-white relative">
+      {/* Animated Background Grid */}
+      <div className="fixed inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_0%,#000_70%,transparent_110%)] opacity-20"></div>
+
+      {/* Gradient Orbs */}
+      <div className="fixed top-0 left-1/4 w-96 h-96 bg-yellow-500/20 rounded-full blur-3xl animate-pulse"></div>
+      <div className="fixed bottom-0 right-1/4 w-96 h-96 bg-orange-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+
+      {/* Mouse Follow Glow */}
+      <div
+        className="fixed w-96 h-96 bg-yellow-500/10 rounded-full blur-3xl pointer-events-none transition-all duration-300"
+        style={{
+          left: mousePosition.x - 192,
+          top: mousePosition.y - 192,
+        }}
+      ></div>
+
       <input
         ref={fileInputRef}
         type="file"
@@ -39,315 +64,365 @@ export default function Homepage() {
         className="hidden"
       />
 
-      {/* Top Navigation */}
-      <header className="sticky top-0 z-50 glass-header px-6 md:px-20 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Link to="/" className="flex items-center">
-            <img src="/logo.png" alt="NyayNeti Logo" className="h-12 w-auto object-contain" />
-          </Link>
-        </div>
-        <nav className="hidden md:flex items-center gap-10">
-          <Link className="text-sm font-medium hover:text-accent-gold transition-colors" to="/dashboard">
-            Dashboard
-          </Link>
+      {/* Navigation */}
+      <header className="sticky top-0 z-50 backdrop-blur-xl bg-slate-950/80 border-b border-yellow-500/20 px-6 md:px-20 py-4 flex items-center justify-between">
+        <Link to="/" className="flex items-center gap-3">
+          <img src="/logo.png" alt="NyayNeti Logo" className="h-14 w-auto object-contain" />
+          <div className="text-xl font-bold" style={{ fontFamily: "'Noto Sans Devanagari', sans-serif" }}>
+            <span className="text-yellow-500">न्याय</span>
+            <span className="text-white">Neti</span>
+          </div>
+        </Link>
+        <nav className="hidden md:flex items-center gap-8">
+          <Link className="text-sm font-medium hover:text-yellow-500 transition-colors" to="/dashboard">Dashboard</Link>
+          <Link className="text-sm font-medium hover:text-yellow-500 transition-colors" to="/citation-finder">Citation Finder</Link>
         </nav>
-        <div className="flex items-center gap-4">
-          <button
-            onClick={handleUploadClick}
-            disabled={uploading}
-            className="bg-accent-gold text-primary text-sm font-bold px-5 py-2 rounded-lg hover:bg-white transition-all disabled:opacity-50"
-          >
-            {uploading ? 'Uploading...' : 'Upload PDF'}
-          </button>
-        </div>
+        <button
+          onClick={handleUploadClick}
+          disabled={uploading}
+          className="bg-gradient-to-r from-yellow-500 to-orange-500 text-slate-950 text-sm font-bold px-6 py-2.5 rounded-lg hover:shadow-lg hover:shadow-yellow-500/50 transition-all relative overflow-hidden group"
+        >
+          <span className="relative z-10">{uploading ? 'Processing...' : 'Upload PDF'}</span>
+          <div className="absolute inset-0 bg-gradient-to-r from-orange-500 to-yellow-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+        </button>
       </header>
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden py-20 min-h-screen flex items-center justify-center hero-gradient">
-        {/* Animated background */}
-        <div className="absolute inset-0 opacity-20">
-          <div className="absolute top-20 left-10 w-72 h-72 bg-gold blur-3xl animate-pulse"></div>
-          <div className="absolute bottom-20 right-10 w-96 h-96 bg-blue-500 blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+      <section className="relative py-20 flex flex-col items-center justify-center text-center min-h-[85vh]">
+        {/* Floating Particles */}
+        <div className="absolute inset-0 overflow-hidden">
+          {[...Array(20)].map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute w-1 h-1 bg-yellow-500/30 rounded-full"
+              initial={{
+                x: Math.random() * window.innerWidth,
+                y: Math.random() * window.innerHeight
+              }}
+              animate={{
+                y: [null, Math.random() * window.innerHeight],
+                x: [null, Math.random() * window.innerWidth],
+              }}
+              transition={{
+                duration: Math.random() * 10 + 10,
+                repeat: Infinity,
+                ease: "linear"
+              }}
+            />
+          ))}
         </div>
 
-        <div className="container mx-auto px-4 relative z-10">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          className="max-w-5xl mx-auto px-4 relative z-10"
+        >
+          {/* Logo/Brand */}
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="text-center"
+            className="mb-8"
+            initial={{ scale: 0.9 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 1, ease: "easeOut" }}
           >
-            {/* Logo */}
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.2, type: "spring" }}
-              className="inline-block mb-8"
-            >
-              <img src="/logo.png" alt="NyayNeti Logo" className="h-64 md:h-[420px] mx-auto object-contain" />
-            </motion.div>
-
-            {/* Title */}
-            <h1 className="text-6xl md:text-8xl font-bold mb-4 tracking-tight">
-              <span className="text-gold font-devanagari">न्याय-नीति</span>
+            <div className="relative inline-block">
+              <img src="/logo.png" alt="NyayNeti Logo" className="h-[300px] md:h-[400px] mb-8 object-contain mx-auto relative z-10" />
+              {/* Glow effect behind logo */}
+              <div className="absolute inset-0 bg-yellow-500/20 blur-3xl"></div>
+            </div>
+            <h1 className="text-5xl md:text-7xl font-black mb-4 text-yellow-600/90 relative" style={{ fontFamily: "'Noto Sans Devanagari', sans-serif" }}>
+              न्याय-नीति
+              <Sparkles className="absolute -top-4 -right-12 text-yellow-500 animate-pulse" size={32} />
             </h1>
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-              NyayNeti
-            </h2>
-
-            {/* Tagline */}
-            <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto leading-relaxed">
-              Sovereignty-focused intelligence platform for the Indian Judiciary.
-              <br />
-              Process complex judgments locally with zero data leakage.
-            </p>
-
-            {/* Status Badge */}
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-navy-800/50 rounded-full border border-gold/20 mb-8">
-              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-              <span className="text-xs font-bold tracking-widest uppercase">OFFLINE • ON-DEVICE • NO CLOUD</span>
-            </div>
-
-            {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={handleUploadClick}
-                disabled={uploading}
-                className="px-8 py-4 bg-gradient-to-r from-gold to-orange-600 text-white font-bold rounded-xl shadow-lg hover:shadow-gold/50 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                <span className="material-symbols-outlined">{uploading ? 'sync' : 'upload_file'}</span>
-                {uploading ? 'Processing...' : 'Upload Judgment PDF'}
-              </motion.button>
-
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => navigate('/dashboard')}
-                className="px-8 py-4 bg-navy-800 text-white font-bold rounded-xl border border-gold/20 hover:bg-navy-700 transition-all flex items-center justify-center gap-2"
-              >
-                <span className="material-symbols-outlined">account_balance</span>
-                See How It Works
-              </motion.button>
-            </div>
           </motion.div>
+
+          <motion.p
+            className="text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto mb-3"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+          >
+            Sovereignty-focused intelligence platform for the Indian Judiciary.
+          </motion.p>
+          <motion.p
+            className="text-base md:text-lg text-gray-400 max-w-2xl mx-auto mb-8"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+          >
+            Process complex judgments locally with zero data leakage.
+          </motion.p>
+
+          <motion.div
+            className="flex items-center justify-center gap-3 text-sm text-green-400 mb-10 bg-green-500/10 border border-green-500/30 rounded-full px-6 py-3 inline-flex"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.5 }}
+          >
+            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+            <span className="font-mono font-semibold">OFFLINE • ON-DEVICE • NO CLOUD</span>
+            <Shield size={18} />
+          </motion.div>
+
+          <motion.div
+            className="flex flex-col sm:flex-row gap-4 justify-center"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+          >
+            <button
+              onClick={handleUploadClick}
+              disabled={uploading}
+              className="bg-gradient-to-r from-yellow-500 to-orange-500 text-slate-950 font-bold px-10 py-4 rounded-xl hover:shadow-2xl hover:shadow-yellow-500/50 transition-all flex items-center justify-center gap-3 relative overflow-hidden group"
+            >
+              <Upload size={20} className="relative z-10" />
+              <span className="relative z-10">{uploading ? 'Processing...' : 'Upload Judgment PDF'}</span>
+              <div className="absolute inset-0 bg-gradient-to-r from-orange-500 to-yellow-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            </button>
+            <Link
+              to="/dashboard"
+              className="border-2 border-yellow-500/50 text-yellow-500 font-bold px-10 py-4 rounded-xl hover:bg-yellow-500/10 hover:border-yellow-500 transition-all flex items-center justify-center gap-3 backdrop-blur-sm"
+            >
+              <TrendingUp size={20} />
+              See How It Works
+            </Link>
+          </motion.div>
+        </motion.div>
+      </section>
+
+      {/* Stats Bar */}
+      <section className="py-12 bg-slate-900/50 backdrop-blur-sm border-y border-yellow-500/20">
+        <div className="container mx-auto px-6 md:px-20">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+            <motion.div
+              className="text-center"
+              whileHover={{ scale: 1.05 }}
+            >
+              <div className="text-4xl font-black text-yellow-500 mb-2">100%</div>
+              <div className="text-sm text-gray-400">Offline Processing</div>
+            </motion.div>
+            <motion.div
+              className="text-center"
+              whileHover={{ scale: 1.05 }}
+            >
+              <div className="text-4xl font-black text-yellow-500 mb-2">0</div>
+              <div className="text-sm text-gray-400">Cloud Dependencies</div>
+            </motion.div>
+            <motion.div
+              className="text-center"
+              whileHover={{ scale: 1.05 }}
+            >
+              <div className="text-4xl font-black text-yellow-500 mb-2">∞</div>
+              <div className="text-sm text-gray-400">Data Sovereignty</div>
+            </motion.div>
+            <motion.div
+              className="text-center"
+              whileHover={{ scale: 1.05 }}
+            >
+              <div className="text-4xl font-black text-yellow-500 mb-2">AI</div>
+              <div className="text-sm text-gray-400">Powered Intelligence</div>
+            </motion.div>
+          </div>
         </div>
       </section>
 
-      {/* Problem Cards */}
-      <section className="py-24 bg-navy-800/30">
-        <div className="container mx-auto px-4">
-          <h2 className="text-4xl font-bold text-center mb-16">
+      {/* The Problem Section */}
+      <section className="py-16 bg-slate-950 relative">
+        <div className="container mx-auto px-6 md:px-20">
+          <motion.h2
+            className="text-3xl md:text-5xl font-bold text-center mb-12 text-white"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+          >
             The Problem with Conventional Systems
-          </h2>
-
-          <div className="grid md:grid-cols-3 gap-8">
+          </motion.h2>
+          <div className="grid md:grid-cols-3 gap-6">
             {[
-              {
-                icon: "description",
-                title: "Unstructured PDFs",
-                desc: "Judicial records trapped in non-searchable, multi-layered PDFs that traditional AI fails to parse accurately.",
-                delay: 0
-              },
-              {
-                icon: "cloud_off",
-                title: "Cloud Dependency",
-                desc: "Sensitive case data should never leave sovereign machines. NyayNeti eliminates the risk of cloud-based data harvesting.",
-                delay: 0.2
-              },
-              {
-                icon: "signal_disconnected",
-                title: "Access Gaps",
-                desc: "Inconsistent connectivity shouldn't hinder justice. Our intelligence engine works in 100% air-gapped environments.",
-                delay: 0.4
-              }
-            ].map((item, i) => (
+              { icon: FileText, title: "Unstructured PDFs", desc: "Judicial records trapped in non-searchable, multi-layered PDFs that traditional AI fails to parse accurately.", color: "yellow" },
+              { icon: CloudOff, title: "Cloud Dependency", desc: "Sensitive case data should never leave sovereign machines. NyayNeti eliminates the risk of cloud-based data harvesting.", color: "orange" },
+              { icon: Users, title: "Access Gaps", desc: "Inconsistent connectivity shouldn't hinder justice. Our intelligence engine works in 100% air-gapped environments.", color: "yellow" }
+            ].map((item, idx) => (
               <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 50 }}
+                key={idx}
+                initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: item.delay }}
-                className="bg-navy-900 p-8 rounded-2xl border border-white/5 hover:border-gold/40 transition-all group"
+                transition={{ delay: idx * 0.1 }}
+                whileHover={{ y: -5, boxShadow: "0 20px 40px rgba(234, 179, 8, 0.2)" }}
+                className="bg-gradient-to-br from-slate-900 to-slate-800 backdrop-blur-lg p-8 rounded-2xl border border-yellow-500/20 hover:border-yellow-500/50 transition-all relative overflow-hidden group"
               >
-                <div className="size-16 rounded-xl bg-gold/10 flex items-center justify-center text-gold mb-6 group-hover:bg-gold group-hover:text-primary transition-colors">
-                  <span className="material-symbols-outlined text-4xl">{item.icon}</span>
-                </div>
-                <h3 className="text-2xl font-bold text-gold mb-3">
-                  {item.title}
-                </h3>
-                <p className="text-gray-400 leading-relaxed">
-                  {item.desc}
-                </p>
+                <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-500/5 rounded-full blur-2xl group-hover:bg-yellow-500/10 transition-all"></div>
+                <item.icon className={`text-${item.color}-500 mb-6 relative z-10`} size={48} />
+                <h3 className="text-2xl font-bold mb-4 text-yellow-500 relative z-10">{item.title}</h3>
+                <p className="text-gray-400 leading-relaxed relative z-10">{item.desc}</p>
               </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Workflow */}
-      <section className="py-24">
-        <div className="container mx-auto px-4">
-          <h2 className="text-4xl font-bold text-center mb-16">
-            The NyayNeti Workflow
-          </h2>
+      {/* The NyayNeti Workflow */}
+      <section className="py-16 bg-slate-900/50 relative overflow-hidden">
+        {/* Connecting Lines Background */}
+        <div className="absolute inset-0 opacity-10">
+          <svg className="w-full h-full">
+            <defs>
+              <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#eab308" stopOpacity="0" />
+                <stop offset="50%" stopColor="#eab308" stopOpacity="1" />
+                <stop offset="100%" stopColor="#eab308" stopOpacity="0" />
+              </linearGradient>
+            </defs>
+            <line x1="0" y1="50%" x2="100%" y2="50%" stroke="url(#lineGradient)" strokeWidth="2" />
+          </svg>
+        </div>
 
-          <div className="flex items-center justify-center gap-12 flex-wrap">
+        <div className="container mx-auto px-6 md:px-20 relative z-10">
+          <motion.h2
+            className="text-3xl md:text-5xl font-bold text-center mb-16 text-white"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+          >
+            The NyayNeti Workflow
+          </motion.h2>
+          <div className="grid md:grid-cols-4 gap-6">
             {[
-              { num: "1", title: "Local Ingestion", icon: "input" },
-              { num: "2", title: "Private Processing", icon: "memory" },
-              { num: "3", title: "Semantic Mapping", icon: "account_tree" },
-              { num: "4", title: "On-Device Insight", icon: "insights" }
-            ].map((step, i) => (
+              { icon: Upload, step: 1, title: "Local Ingestion", desc: "Upload PDFs directly to your machine", color: "from-yellow-500 to-orange-500" },
+              { icon: Cpu, step: 2, title: "Private Processing", desc: "AI models run entirely offline", color: "from-orange-500 to-yellow-500" },
+              { icon: Network, step: 3, title: "Semantic Mapping", desc: "Build citation networks locally", color: "from-yellow-500 to-orange-500" },
+              { icon: TrendingUp, step: 4, title: "On-Device Insight", desc: "Instant analysis without internet", color: "from-orange-500 to-yellow-500" }
+            ].map((item, idx) => (
               <motion.div
-                key={i}
-                initial={{ opacity: 0, scale: 0.5 }}
+                key={idx}
+                initial={{ opacity: 0, scale: 0.9 }}
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="text-center relative group"
+                transition={{ delay: idx * 0.15 }}
+                whileHover={{ scale: 1.05 }}
+                className="text-center relative"
               >
-                <div className="w-28 h-28 bg-gold/5 rounded-full flex items-center justify-center mb-6 mx-auto border-2 border-gold/30 group-hover:border-gold group-hover:bg-gold/10 transition-all">
-                  <span className="material-symbols-outlined text-4xl text-gold">{step.icon}</span>
+                <div className={`w-24 h-24 mx-auto mb-6 bg-gradient-to-br ${item.color} rounded-2xl flex items-center justify-center shadow-lg shadow-yellow-500/30 relative overflow-hidden group`}>
+                  <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  <item.icon className="text-slate-950 relative z-10" size={40} />
                 </div>
-                <div className="text-xs text-gray-500 mb-1 uppercase font-bold tracking-widest">Step {step.num}</div>
-                <div className="font-bold text-lg">{step.title}</div>
-                {i < 3 && (
-                  <div className="hidden lg:block absolute top-10 -right-10 text-gold/30 text-3xl">→</div>
+                <div className="text-xs text-yellow-500 font-mono mb-2 font-bold">STEP {item.step}</div>
+                <h3 className="text-xl font-bold mb-3 text-white">{item.title}</h3>
+                <p className="text-gray-400 text-sm">{item.desc}</p>
+
+                {/* Connecting Arrow */}
+                {idx < 3 && (
+                  <div className="hidden md:block absolute top-12 -right-3 text-yellow-500/30">
+                    <Zap size={24} />
+                  </div>
                 )}
               </motion.div>
             ))}
           </div>
-
-          <div className="flex flex-col sm:flex-row justify-center mt-20 gap-6">
-            <div className="bg-navy-800 p-8 rounded-2xl border border-gold/20 text-center flex-1 max-w-xs">
-              <div className="text-5xl font-black text-gold mb-2">100%</div>
-              <div className="text-xs text-gray-500 uppercase font-bold tracking-widest">OFFLINE PROCESSING</div>
-            </div>
-            <div className="bg-navy-800 p-8 rounded-2xl border border-gold/20 text-center flex-1 max-w-xs">
-              <div className="text-5xl font-black text-gold mb-2">0 KB</div>
-              <div className="text-xs text-gray-500 uppercase font-bold tracking-widest">CLOUD DATA STORAGE</div>
-            </div>
-          </div>
         </div>
       </section>
 
-      {/* Future Features */}
-      <section className="py-24 bg-navy-800/30">
-        <div className="container mx-auto px-4">
-          <h2 className="text-4xl font-bold text-center mb-4">
-            🚀 Coming Soon
-          </h2>
-          <p className="text-center text-gray-400 mb-16">
-            Future features in development
-          </p>
+      {/* Coming Soon Section */}
+      <section className="py-16 bg-slate-950 relative">
+        <div className="container mx-auto px-6 md:px-20">
+          <div className="text-center mb-12">
+            <motion.div
+              initial={{ scale: 0 }}
+              whileInView={{ scale: 1 }}
+              viewport={{ once: true }}
+              className="inline-block"
+            >
+              <Rocket className="text-yellow-500 mx-auto mb-4" size={56} />
+            </motion.div>
+            <h2 className="text-3xl md:text-5xl font-bold text-white mb-4">Coming Soon</h2>
+            <p className="text-gray-400">Future features in development</p>
+          </div>
 
-          <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-5 max-w-5xl mx-auto">
             {[
-              {
-                icon: "public",
-                title: "International Market Expansion",
-                desc: "Support for US, UK, EU legal systems. Multi-jurisdiction precedent analysis.",
-                status: "Q2 2026"
-              },
-              {
-                icon: "mic",
-                title: "Voice Query Interface",
-                desc: "Natural language voice commands in Hindi & English. Perfect for courtroom use.",
-                status: "Q3 2026"
-              },
-              {
-                icon: "auto_graph",
-                title: "Citation Network Graph",
-                desc: "Visual mapping of case law relationships and precedent chains.",
-                status: "Q2 2026"
-              },
-              {
-                icon: "document_scanner",
-                title: "OCR for Scanned Judgments",
-                desc: "Process image-based PDFs from lower courts with high accuracy.",
-                status: "Q3 2026"
-              }
-            ].map((feature, i) => (
+              { icon: Globe, title: "International Market Expansion", badge: "Q3 2026", badgeColor: "yellow", desc: "Support for US, UK, EU legal systems. Multi-jurisdiction precedent analysis." },
+              { icon: Mic, title: "Voice Query Interface", badge: "IN BETA", badgeColor: "green", desc: "Natural language voice commands in Hindi & English. Perfect for courtroom use." },
+              { icon: GitBranch, title: "Citation Network Graph", badge: "Q2 2026", badgeColor: "yellow", desc: "Visual mapping of case law relationships and precedent chains." },
+              { icon: ScanLine, title: "OCR for Scanned Judgments", badge: "Q2 2026", badgeColor: "yellow", desc: "Process image-based PDFs from lower courts with high accuracy." }
+            ].map((item, idx) => (
               <motion.div
-                key={i}
-                initial={{ opacity: 0, x: i % 2 === 0 ? -50 : 50 }}
+                key={idx}
+                initial={{ opacity: 0, x: idx % 2 === 0 ? -20 : 20 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="bg-navy-900/50 p-8 rounded-2xl border border-white/5 hover:border-gold/30 transition-all group"
+                transition={{ delay: idx * 0.1 }}
+                whileHover={{ scale: 1.02 }}
+                className="bg-gradient-to-br from-slate-900 to-slate-800 backdrop-blur-lg p-8 rounded-2xl border border-yellow-500/20 hover:border-yellow-500/50 transition-all relative overflow-hidden group"
               >
-                <div className="flex items-start gap-6">
-                  <div className="size-14 rounded-xl bg-gold/5 flex items-center justify-center text-gold group-hover:bg-gold group-hover:text-primary transition-colors shrink-0">
-                    <span className="material-symbols-outlined text-3xl">{feature.icon}</span>
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-xl font-bold">{feature.title}</h3>
-                      <span className="text-[10px] px-3 py-1 bg-gold/20 text-gold rounded-full font-black uppercase tracking-widest">
-                        {feature.status}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-400 leading-relaxed">{feature.desc}</p>
-                  </div>
+                <div className="absolute top-0 right-0 w-40 h-40 bg-yellow-500/5 rounded-full blur-3xl group-hover:bg-yellow-500/10 transition-all"></div>
+                <item.icon className="text-yellow-500 mb-4 relative z-10" size={40} />
+                <div className="flex items-center gap-3 mb-3 relative z-10">
+                  <h3 className="text-xl font-bold text-white">{item.title}</h3>
+                  <span className={`text-xs bg-${item.badgeColor}-500/20 text-${item.badgeColor}-500 px-3 py-1 rounded-full font-bold border border-${item.badgeColor}-500/30`}>
+                    {item.badge}
+                  </span>
                 </div>
+                <p className="text-gray-400 text-sm relative z-10">{item.desc}</p>
               </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Final CTA */}
-      <section className="py-32 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-navy-900 via-gold/5 to-navy-900"></div>
-        <div className="container mx-auto px-4 text-center relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-          >
-            <h2 className="text-5xl font-bold mb-8 max-w-3xl mx-auto leading-tight">
-              Ready to Experience Sovereign Legal Intelligence?
-            </h2>
-            <button
-              onClick={handleUploadClick}
-              disabled={uploading}
-              className="px-12 py-5 bg-gradient-to-r from-gold to-orange-600 text-white text-xl font-black rounded-2xl shadow-2xl hover:shadow-gold/50 transition-all hover:scale-105 flex items-center gap-3 mx-auto disabled:opacity-50"
-            >
-              <span className="material-symbols-outlined">rocket_launch</span>
-              {uploading ? 'Processing...' : 'Get Started Now →'}
-            </button>
-          </motion.div>
+      {/* CTA Section */}
+      <section className="py-24 bg-gradient-to-b from-slate-900 to-slate-950 text-center relative overflow-hidden">
+        {/* Animated Background */}
+        <div className="absolute inset-0">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-yellow-500/10 rounded-full blur-3xl animate-pulse"></div>
         </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="max-w-4xl mx-auto px-6 relative z-10"
+        >
+          <Brain className="text-yellow-500 mx-auto mb-6 animate-pulse" size={64} />
+          <h2 className="text-4xl md:text-6xl font-bold mb-8 text-white leading-tight">
+            Ready to Experience Sovereign Legal Intelligence?
+          </h2>
+          <p className="text-xl text-gray-400 mb-10">Join the future of offline AI-powered legal analysis</p>
+          <button
+            onClick={handleUploadClick}
+            disabled={uploading}
+            className="bg-gradient-to-r from-yellow-500 to-orange-500 text-slate-950 font-bold px-14 py-5 rounded-xl text-lg hover:shadow-2xl hover:shadow-yellow-500/50 transition-all inline-flex items-center gap-3 relative overflow-hidden group"
+          >
+            <Rocket size={24} className="relative z-10" />
+            <span className="relative z-10">Get Started Now →</span>
+            <div className="absolute inset-0 bg-gradient-to-r from-orange-500 to-yellow-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          </button>
+        </motion.div>
       </section>
 
       {/* Footer */}
-      <footer className="py-12 px-6 md:px-20 border-t border-white/5 bg-navy-900">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2">
-              <span className="text-xl font-bold">
-                <span className="text-gold">न्याय-नीति</span>
-                <span className="ml-1">NyayNeti</span>
-              </span>
+      <footer className="py-10 bg-slate-950 border-t border-yellow-500/20">
+        <div className="container mx-auto px-6 md:px-20">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+            <div className="text-center md:text-left">
+              <div className="text-xl font-bold mb-2" style={{ fontFamily: "'Noto Sans Devanagari', sans-serif" }}>
+                <span className="text-yellow-500">न्याय-नीति</span> <span className="text-white">NyayNeti</span>
+              </div>
+              <p className="text-gray-500 text-sm">Professional legal intelligence for Indian judicial officers.</p>
             </div>
-            <p className="text-xs text-gray-500">
-              Professional legal intelligence for Indian judicial officers.
-            </p>
+            <div className="flex gap-8 text-sm text-gray-400">
+              <a href="#" className="hover:text-yellow-500 transition-colors">Privacy Policy</a>
+              <a href="#" className="hover:text-yellow-500 transition-colors">Terms of Service</a>
+              <a href="#" className="hover:text-yellow-500 transition-colors">Sovereignty Guide</a>
+            </div>
+            <div className="text-sm text-gray-500">
+              <div className="mb-1 text-xs">DEVELOPED BY</div>
+              <div className="font-bold text-white">We Had No Third</div>
+            </div>
           </div>
-          <div className="flex gap-8 text-sm text-gray-400">
-            <a className="hover:text-white transition-colors" href="#">Privacy Policy</a>
-            <a className="hover:text-white transition-colors" href="#">Terms of Service</a>
-            <a className="hover:text-white transition-colors" href="#">Sovereignty Guide</a>
+          <div className="mt-8 text-center text-xs text-gray-600">
+            © 2026 NYAYNETI MVP. ALL RIGHTS RESERVED. NOT FOR PUBLIC COMMERCIAL USE.
           </div>
-          <div className="text-right">
-            <p className="text-xs text-gray-500 uppercase tracking-widest font-bold">Developed by</p>
-            <p className="text-sm font-medium text-white italic">We Had No Third</p>
-          </div>
-        </div>
-        <div className="text-center mt-12 pt-8 border-t border-white/5 text-[10px] text-gray-600 uppercase tracking-tighter">
-          © 2024 NyayNeti Intelligence Systems. All Rights Reserved. Not for public consumer use.
         </div>
       </footer>
     </div>

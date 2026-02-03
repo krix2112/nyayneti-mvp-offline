@@ -139,7 +139,7 @@ class LLMEngine:
         # We trust the heuristics above for now.
         return True, ""
 
-    def _call_llm(self, prompt: str, max_tokens: int = 512, stream: bool = False):
+    def _call_llm(self, prompt: str, max_tokens: int = 1500, stream: bool = False):
         """Call the available LLM (Local GGUF -> Ollama -> Error)."""
         if self._llm:
             try:
@@ -222,8 +222,11 @@ class LLMEngine:
                 "stream": True, 
                 "options": {
                     "num_predict": max_tokens,
-                    "temperature": 0.1,
-                    "num_thread": self.n_threads
+                    "temperature": 0.0,  # Greedy decoding = fastest
+                    "num_thread": self.n_threads,
+                    "num_ctx": 8192,  # Larger context for richer retrieval
+                    "mirostat": 0,  # Disable for speed
+                    "repeat_penalty": 1.0  # No penalty = faster
                 }
             }
             
@@ -246,6 +249,8 @@ class LLMEngine:
                             token = chunk.get("response", "")
                             if token:
                                 token_count += 1
+                                if token_count % 50 == 0:
+                                    print(f"🌊 [STREAMING] Generated {token_count} tokens...", end='\r')
                                 yield token
                         except json.JSONDecodeError:
                             pass
@@ -402,14 +407,15 @@ class LLMEngine:
         if self.vector_store:
             emb_model = self._get_embedding_model()
             q_emb = emb_model.encode(question) if emb_model else np.zeros(384)
-            # Reduced pool size for faster reranking (12 candidates)
-            search_k = 12 if doc_id else 12 
+            # Increased pool size for richer context (30 candidates)
+            search_k = 30 if doc_id else 30 
             
             if doc_id:
                 print(f"🔍 [AI] Target Search: Restricted to {doc_id}")
             else:
                 print(f"🔍 [AI] Global Search: Searching across all documents")
                 
+            yield "[STATUS]: Searching legal documents via FAISS...\n"
             retrieved = self.vector_store.search(
                 query_embedding=q_emb,
                 query_text=question,
@@ -443,14 +449,17 @@ class LLMEngine:
             # Keep top 5 for construction
             retrieved = retrieved[:5]
             print(f"✅ [AI] Reranking Complete: Selected top {len(retrieved)} most accurate matches")
+            yield f"[STATUS]: Found {len(retrieved)} relevant matches...\n"
             logger.info("Reranking complete")
         elif not reranker:
             print("⚡ [AI] Reranking: Skipped (Performance Optimization)")
 
-        # Phase 3: Fast Snippet Filtering (Score > 0.4)
-        filtered_retrieved = [ch for ch in retrieved if (isinstance(ch, dict) and ch.get('score', 1.0) > 0.4) or (not isinstance(ch, dict) and getattr(ch, 'score', 1.0) > 0.4)]
+        # Phase 3: Smart Filtering - Keep top 12 diverse, high-quality chunks
+        filtered_retrieved = [ch for ch in retrieved if (isinstance(ch, dict) and ch.get('score', 1.0) > 0.35) or (not isinstance(ch, dict) and getattr(ch, 'score', 1.0) > 0.35)]
         if not filtered_retrieved and retrieved:
-            filtered_retrieved = retrieved[:2] # Fallback to top 2 if filtering is too aggressive
+            filtered_retrieved = retrieved[:3] # Fallback to top 3 if filtering is too aggressive
+        # Cap at 12 for optimal context/speed balance
+        filtered_retrieved = filtered_retrieved[:12]
             
         context = "\n\n".join(f"SOURCE: {ch.get('doc_id', 'Unknown')}\n{ch.get('text', '')}" if isinstance(ch, dict) else f"SOURCE: {ch.doc_id}\n{ch.text}" for ch in filtered_retrieved)
         
@@ -481,6 +490,7 @@ Your goal is to provide deep, structured analysis based EXCLUSIVELY on the provi
 
 Analysis:"""
         
+        yield "[STATUS]: Formulating legal reasoning...\n"
         full_response = ""
         for token in self._call_llm(prompt, stream=True):
             full_response += token
@@ -531,6 +541,7 @@ Analysis:"""
         # Get chunks from selected PDF
         selected_chunks = [ch for ch in chunks if (isinstance(ch, dict) and ch.get('doc_id') == selected_pdf_id) or (not isinstance(ch, dict) and ch.doc_id == selected_pdf_id)]
         # Get chunks from all other PDFs
+        yield "[STATUS]: Retrieving comparison context...\n"
         other_chunks = [ch for ch in chunks if (isinstance(ch, dict) and ch.get('doc_id') != selected_pdf_id) or (not isinstance(ch, dict) and ch.doc_id != selected_pdf_id)]
         
         if not selected_chunks:
@@ -541,23 +552,50 @@ Analysis:"""
             yield "ERROR: No other PDFs available for comparison."
             return
         
-        # Build context from selected PDF (REDUCED to 3 chunks to avoid timeout)
-        selected_context = "\n".join(ch.get('text', '') if isinstance(ch, dict) else ch.text for ch in selected_chunks[:3])
+        # Build context from selected PDF (8 chunks for comprehensive coverage)
+        selected_context = "\n".join(ch.get('text', '') if isinstance(ch, dict) else ch.text for ch in selected_chunks[:8])
         
-        # Build context from other PDFs (sample ONLY 2 chunks from each)
-        other_docs = {}
-        for ch in other_chunks:
-            doc_id = ch.get('doc_id') if isinstance(ch, dict) else ch.doc_id
-            text = ch.get('text', '') if isinstance(ch, dict) else ch.text
-            if doc_id not in other_docs:
-                other_docs[doc_id] = []
-            if len(other_docs[doc_id]) < 2:  # Limit to 2 chunks per doc
-                other_docs[doc_id].append(text)
+        # FAISS-Powered Comparison: Find most relevant chunks from other docs
+        print(f"🔍 [COMPARE] Using FAISS to find relevant context from {len(set(ch.get('doc_id') if isinstance(ch, dict) else ch.doc_id for ch in other_chunks))} reference documents...")
         
+        # Get embedding for selected document summary
+        emb_model = self._get_embedding_model()
+        if emb_model:
+            selected_summary = selected_context[:2000]  # Use first 2000 chars as query
+            query_emb = emb_model.encode(selected_summary)
+            
+            # Search for top 5 most relevant chunks per document
+            other_docs = {}
+            for doc_id in set(ch.get('doc_id') if isinstance(ch, dict) else ch.doc_id for ch in other_chunks):
+                if self.vector_store:
+                    relevant_chunks = self.vector_store.search(
+                        query_embedding=query_emb,
+                        query_text=selected_summary,
+                        top_k=5,
+                        doc_ids=[doc_id],
+                        include_neighbors=False
+                    )
+                    other_docs[doc_id] = [ch['text'] for ch in relevant_chunks]
+                else:
+                    # Fallback to first 4 chunks if no vector store
+                    other_docs[doc_id] = [ch.get('text', '') if isinstance(ch, dict) else ch.text 
+                                          for ch in other_chunks if (ch.get('doc_id') if isinstance(ch, dict) else ch.doc_id) == doc_id][:4]
+        else:
+            # Fallback: sample 4 chunks per doc
+            other_docs = {}
+            for ch in other_chunks:
+                doc_id = ch.get('doc_id') if isinstance(ch, dict) else ch.doc_id
+                text = ch.get('text', '') if isinstance(ch, dict) else ch.text
+                if doc_id not in other_docs:
+                    other_docs[doc_id] = []
+                if len(other_docs[doc_id]) < 4:
+                    other_docs[doc_id].append(text)
         other_context = "\n\n".join(
             f"Document: {doc_id}\n{' '.join(texts)}" 
             for doc_id, texts in other_docs.items()
         )
+        print(f"✅ [COMPARE] Context built: {len(other_docs)} documents with FAISS-selected relevant sections")
+        yield f"[STATUS]: Analyzing differences in {len(other_docs)} document(s)...\n"
         
         # Build OPTIMIZED comparison prompt with STRICT GROUNDING (Reduced for stability)
         if query:
@@ -589,11 +627,9 @@ OTHER DOCUMENTS (Context snippets):
 Comparison Analysis:"""
         
         # Stream the analysis
-        metadata = {
-            "selected_pdf": selected_pdf_id,
-            "compared_against": list(other_docs.keys()),
-            "total_documents": len(other_docs) + 1
-        }
+        print(f"\n📊 [COMPARE] Starting Analysis for '{selected_pdf_id}'")
+        print(f"📚 [COMPARE] Context: {len(selected_context)} selected chars vs {len(other_context)} reference chars")
+        print(f"🤖 [COMPARE] Models: {self.ollama_model}")
         
         logger.info(f"📊 Running comparison for {selected_pdf_id} against {len(other_docs)} items")
         
@@ -603,6 +639,7 @@ Comparison Analysis:"""
             for token in self._call_llm(prompt, max_tokens=2048, stream=True):
                 token_count += 1
                 yield token
+            print(f"\n✅ [COMPARE] Analysis complete! Full report generated ({token_count} tokens)")
             logger.info(f"✅ Comparison complete! Streamed {token_count} tokens")
         except Exception as e:
             logger.error(f"Error during LLM comparison call: {e}", exc_info=True)

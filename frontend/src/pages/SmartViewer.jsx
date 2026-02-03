@@ -32,7 +32,9 @@ const SmartViewer = () => {
     const [messages, setMessages] = useState([]);
     const [query, setQuery] = useState('');
     const [isTyping, setIsTyping] = useState(false);
+    const [currentStreamingText, setCurrentStreamingText] = useState(''); // For real-time streaming
     const [citations, setCitations] = useState([]);
+    const [currentStatus, setcurrentStatus] = useState('');
 
     useEffect(() => {
         loadDocuments();
@@ -119,7 +121,10 @@ const SmartViewer = () => {
             const decoder = new TextDecoder();
             let streamedContent = '';
 
-            setMessages(prev => [...prev, { type: 'assistant', content: '' }]);
+            // Start streaming mode - hide typing dots, show streaming text area
+            setIsTyping(false);
+            setCurrentStreamingText('▌'); // Show cursor immediately
+            setcurrentStatus('Analyzing legal parameters...');
 
             while (true) {
                 const { done, value } = await reader.read();
@@ -127,32 +132,40 @@ const SmartViewer = () => {
 
                 const chunk = decoder.decode(value);
 
-                // Process metadata and filter logs
+                // Filter out metadata and extract status
                 const lines = chunk.split('\n');
-                const filteredChunk = lines
-                    .filter(line => !line.startsWith('DATA:'))
-                    .join('\n');
+                let cleanChunk = '';
 
-                streamedContent += filteredChunk;
-
-                setMessages(prev => {
-                    const last = prev[prev.length - 1];
-                    if (last.type === 'assistant') {
-                        // Extract highlights from streamed content
-                        const highlightMatches = [...streamedContent.matchAll(/\[\[HIGHLIGHT:\s*(.*?)\]\]/gi)];
-                        const newHighlights = highlightMatches.map(m => m[1]);
-                        if (newHighlights.length > 0) {
-                            setHighlights(prevH => {
-                                // Only add if not already present to avoid jitter
-                                const unique = newHighlights.filter(h => !prevH.includes(h));
-                                return [...prevH, ...unique];
-                            });
-                        }
-
-                        return [...prev.slice(0, -1), { ...last, content: streamedContent }];
+                for (const line of lines) {
+                    if (line.startsWith('[STATUS]:')) {
+                        setcurrentStatus(line.replace('[STATUS]:', '').trim());
+                        continue;
                     }
-                    return prev;
-                });
+                    if (!line.startsWith('DATA:')) {
+                        cleanChunk += line + (lines.length > 1 ? '\n' : '');
+                    }
+                }
+
+                streamedContent += cleanChunk;
+
+                // CRITICAL: Update streaming text immediately for real-time display
+                setCurrentStreamingText(streamedContent + '▌');
+
+                // Extract highlights
+                const highlightMatches = [...streamedContent.matchAll(/\[\[HIGHLIGHT:\s*(.*?)\]\]/gi)];
+                const newHighlights = highlightMatches.map(m => m[1]);
+                if (newHighlights.length > 0) {
+                    setHighlights(prevH => {
+                        const unique = newHighlights.filter(h => !prevH.includes(h));
+                        return [...prevH, ...unique];
+                    });
+                }
+            }
+
+            // Streaming complete - move to messages array
+            setCurrentStreamingText('');
+            if (streamedContent.trim()) {
+                setMessages(prev => [...prev, { type: 'assistant', content: streamedContent }]);
             }
         } catch (err) {
             if (err.name === 'AbortError') {
@@ -163,8 +176,30 @@ const SmartViewer = () => {
             }
         } finally {
             setIsTyping(false);
+            setcurrentStatus('');
             abortControllerRef.current = null;
         }
+    };
+
+    // Helper to render think block
+    const ReasoningBlock = ({ content }) => {
+        const thinkMatch = content.match(/<think>([\s\S]*?)(?:<\/think>|$)/i);
+        if (!thinkMatch) return null;
+
+        return (
+            <div className="mb-4 bg-slate-950/40 rounded-xl border border-white/5 p-4 overflow-hidden group">
+                <div className="flex items-center gap-2 mb-2 text-[10px] font-black uppercase tracking-tighter text-blue-400 opacity-50">
+                    <Zap size={10} /> AI Internal Reasoning
+                </div>
+                <div className="text-xs text-slate-400 italic font-medium leading-relaxed">
+                    {thinkMatch[1].trim()}
+                </div>
+            </div>
+        );
+    };
+
+    const cleanContent = (text) => {
+        return text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
     };
 
     return (
@@ -220,7 +255,7 @@ const SmartViewer = () => {
                         </div>
                     </div>
 
-                    <div className="flex-1 p-4 overflow-hidden">
+                    <div className="flex-1 p-4">
                         {selectedDocId ? (
                             <PDFViewer
                                 fileUrl={`http://localhost:8000/api/document/${selectedDocId}/pdf`}
@@ -257,14 +292,14 @@ const SmartViewer = () => {
                                             ? 'bg-red-500/10 border border-red-500/20 text-red-400'
                                             : 'bg-slate-800 border border-white/5 text-gray-200'
                                         }`}>
+                                        <ReasoningBlock content={msg.content} />
                                         <ReactMarkdown
                                             remarkPlugins={[remarkGfm]}
                                             components={{
                                                 strong: ({ node, ...props }) => <span className="font-bold text-gold" {...props} />,
-                                                // Function to clean highlights from text display
                                             }}
                                         >
-                                            {msg.content.replace(/\[\[HIGHLIGHT:\s*(.*?)\]\]/gi, '$1')}
+                                            {cleanContent(msg.content).replace(/\[\[HIGHLIGHT:\s*(.*?)\]\]/gi, '$1')}
                                         </ReactMarkdown>
 
                                         {/* Voice Output for AI messages */}
@@ -277,10 +312,38 @@ const SmartViewer = () => {
                                 </div>
                             ))}
                             {isTyping && (
-                                <div className="flex gap-2 p-4 bg-slate-800/50 rounded-2xl border border-white/5 w-fit">
-                                    <div className="size-2 bg-gold/50 rounded-full animate-bounce"></div>
-                                    <div className="size-2 bg-gold/50 rounded-full animate-bounce delay-100"></div>
-                                    <div className="size-2 bg-gold/50 rounded-full animate-bounce delay-200"></div>
+                                <div className="flex flex-col gap-3 p-4 bg-slate-800/50 rounded-2xl border border-white/5 w-fit min-w-[200px]">
+                                    <div className="flex gap-2">
+                                        <div className="size-2 bg-gold/50 rounded-full animate-bounce"></div>
+                                        <div className="size-2 bg-gold/50 rounded-full animate-bounce delay-100"></div>
+                                        <div className="size-2 bg-gold/50 rounded-full animate-bounce delay-200"></div>
+                                    </div>
+                                    {currentStatus && (
+                                        <div className="text-[10px] font-bold text-gold/60 uppercase tracking-widest animate-pulse">
+                                            {currentStatus}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                            {currentStreamingText && (
+                                <div className="flex flex-col items-start w-full">
+                                    {currentStatus && (
+                                        <div className="mb-2 ml-4 flex items-center gap-2 text-[10px] font-black text-gold/40 tracking-widest uppercase">
+                                            <div className="size-1 bg-gold/40 rounded-full animate-ping"></div>
+                                            {currentStatus}
+                                        </div>
+                                    )}
+                                    <div className="max-w-[90%] p-4 rounded-2xl text-sm leading-relaxed bg-slate-800 border border-gold/30 text-gray-200 shadow-lg shadow-gold/5">
+                                        <ReasoningBlock content={currentStreamingText} />
+                                        <ReactMarkdown
+                                            remarkPlugins={[remarkGfm]}
+                                            components={{
+                                                strong: ({ node, ...props }) => <span className="font-bold text-gold" {...props} />,
+                                            }}
+                                        >
+                                            {cleanContent(currentStreamingText).replace(/\[\[HIGHLIGHT:\s*(.*?)\]\]/gi, '$1')}
+                                        </ReactMarkdown>
+                                    </div>
                                 </div>
                             )}
                         </div>

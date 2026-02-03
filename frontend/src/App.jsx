@@ -8,6 +8,9 @@ import Compare from './pages/Compare';
 import DocumentDrafter from './pages/DocumentDrafter';
 import StrengthAnalyzer from './pages/StrengthAnalyzer';
 import SmartViewer from './pages/SmartViewer';
+import CitationFinder from './pages/CitationFinder';
+import StandaloneCitationFinder from './pages/StandaloneCitationFinder';
+import PerfectCitationFinder from './pages/PerfectCitationFinder';
 import StatusBar from './components/StatusBar';
 import { useKeyboardShortcuts, ShortcutsHint } from './hooks/useKeyboardShortcuts.jsx';
 
@@ -25,6 +28,9 @@ function AppContent() {
         <Route path="/draft" element={<DocumentDrafter />} />
         <Route path="/strength" element={<StrengthAnalyzer />} />
         <Route path="/viewer" element={<SmartViewer />} />
+        <Route path="/citation-finder" element={<CitationFinder />} />
+        <Route path="/standalone-citation-finder" element={<StandaloneCitationFinder />} />
+        <Route path="/perfect-citation-finder" element={<PerfectCitationFinder />} />
       </Routes>
 
       <StatusBar />

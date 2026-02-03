@@ -11,14 +11,58 @@
     }
   },
   "Dr_Subodh_Jain_vs_The_State_Of_Madhya_Pradesh_on_20_January_2016.PDF": {
-    "start_idx": 16,
-    "end_idx": 37,
-    "num_chunks": 21,
+    "start_idx": 3121,
+    "end_idx": 3146,
+    "num_chunks": 25,
     "metadata": {
       "filename": "Dr_Subodh_Jain_vs_The_State_Of_Madhya_Pradesh_on_20_January_2016.PDF",
-      "file_size": 264753,
-      "upload_date": "2026-01-30T19:08:37.597364",
-      "num_chunks": 21
+      "file_size": 25149,
+      "citations": {
+        "case_names": [
+          "ble Supreme Court in the case of Lalita Kumari v. Government of",
+          "dictum of the Apex Court in the case of Lalita\nKumari v. Govt",
+          "The Apex Court in the matter of Lalita\nKumari v. State of",
+          "The Apex Court in the matter of Arnesh Kumar v. State of Bihar",
+          "Learned counsel for the appellant has submitted that the impugned order has been passed in\nviolation of the law laid down by the Apex Court in the case of Lalita Kumari v. Govt",
+          "and Arnesh Kumar v. State of Bihar",
+          "law laid down by the Apex Court in case of Gangadhar\nJanardan Mhatre v. State of Maharashtra",
+          "others v. Dinesh Mishra reported in AIR",
+          "of the decision in\nthe case of Lalita Kumari v. Govt",
+          "and the decision in the case of Chandra Deo Singh v. Indian Kanoon",
+          "He further submitted that learned Writ Court\nrelying on the Constitutional Bench decision of the Apex Court in the case of Lalita Kumari v. Govt",
+          "of the Constitutional Bench decision in the case of Lalita\nKumari v. Govt"
+        ],
+        "ipc_sections": [],
+        "crpc_sections": [],
+        "cpc_sections": [],
+        "articles": [
+          "Article 226"
+        ],
+        "acts": [
+          "4 to 6 has drawn our attention\nto Section 67 of the Companies Act, 2013"
+        ],
+        "year_citations": [
+          "(2004) 7 SCC 768"
+        ],
+        "air_citations": [
+          "AIR 1968 SC 117",
+          "AIR 1963 SC 1430"
+        ],
+        "scc_citations": [
+          "(2004) 7 SCC 768"
+        ]
+      },
+      "citation_count": {
+        "total": 18,
+        "case_names": 12,
+        "ipc_sections": 0,
+        "crpc_sections": 0,
+        "articles": 1,
+        "acts": 1
+      },
+      "upload_date": "2026-02-01T12:04:51.968219",
+      "total_pages": 1,
+      "num_chunks": 25
     }
   },
   "Food_Corporation_Of_India_vs_Excel_Corp_Care_Ltd_Ors_on_3_June_2020.PDF": {
@@ -33,14 +77,87 @@
     }
   },
   "Kuldeep_vs_The_State_Of_Karnataka_on_19_January_2023.PDF": {
-    "start_idx": 101,
-    "end_idx": 175,
-    "num_chunks": 74,
+    "start_idx": 2724,
+    "end_idx": 2797,
+    "num_chunks": 73,
     "metadata": {
       "filename": "Kuldeep_vs_The_State_Of_Karnataka_on_19_January_2023.PDF",
-      "file_size": 339716,
-      "upload_date": "2026-01-30T19:08:56.130550",
-      "num_chunks": 74
+      "file_size": 96255,
+      "citations": {
+        "case_names": [
+          "the arrest of the petitioner is contrary to law and the guidelines laid down\nby the Apex Court in the case of ARNESH KUMAR v. STATE OF BIHAR",
+          "BASU v. STATE OF",
+          "Chapter v. of the Criminal Procedure\nCode",
+          "This Court in Joginder Kumar v. State of",
+          "The Apex Court in the case of ARNESH KUMAR v. STATE OF BIHAR",
+          "In the case of MOHAMMED ZUBAIR v. STATE OF NCT OF DELHI AND\nOTHERS",
+          "including in Arnesh Kumar v. State of Bihar",
+          "the Apex Court in the case of SATENDER KUMAR ANTIL v. CBI",
+          "in light of\nthe judgment of this Court in Arnesh Kumar v. State of Bihar",
+          "Arnesh Kumar v. State\nof Bihar",
+          "Arnesh Kumar v. State of Bihar",
+          "Reference being made to the judgment of the Apex Court in the case of\nSUBE SINGH v. STATE OF HARYANA",
+          "In Rudul Sah v. State of Bihar",
+          "was followed in Bhim Singh v. State of",
+          "Union for Democratic Rights v. Police Commr",
+          "The law was crystallised in Nilabati Behera v. State of Orissa",
+          "Basu v. State of"
+        ],
+        "ipc_sections": [
+          "Section 379 IPC"
+        ],
+        "crpc_sections": [
+          "Section 41A CrPC",
+          "Section 41 CrPC"
+        ],
+        "cpc_sections": [],
+        "articles": [
+          "Article 21",
+          "Article 22",
+          "Article 20",
+          "Article 32",
+          "Article 226"
+        ],
+        "acts": [],
+        "year_citations": [
+          "(2014) 8 SCC 273",
+          "(1994) 4 SCC 260",
+          "(2022) 10 SCC 51",
+          "(2006) 3 SCC 178",
+          "(1981) 1 SCC 627",
+          "(1981) 2 SCC 493",
+          "(1983) 4 SCC 141",
+          "(1985) 4 SCC 677",
+          "(1989) 4 SCC 730",
+          "(1993) 2 SCC 746",
+          "(1997) 1 SCC 416"
+        ],
+        "air_citations": [],
+        "scc_citations": [
+          "(2014) 8 SCC 273",
+          "(1994) 4 SCC 260",
+          "(2022) 10 SCC 51",
+          "(2006) 3 SCC 178",
+          "(1981) 1 SCC 627",
+          "(1981) 2 SCC 493",
+          "(1983) 4 SCC 141",
+          "(1985) 4 SCC 677",
+          "(1989) 4 SCC 730",
+          "(1993) 2 SCC 746",
+          "(1997) 1 SCC 416"
+        ]
+      },
+      "citation_count": {
+        "total": 47,
+        "case_names": 17,
+        "ipc_sections": 1,
+        "crpc_sections": 2,
+        "articles": 5,
+        "acts": 0
+      },
+      "upload_date": "2026-02-01T08:38:20.784310",
+      "total_pages": 33,
+      "num_chunks": 73
     }
   },
   "Ranjithkumar_vs_State_Rep_By_Inspector_Of_Police_on_8_March_2012.PDF": {
@@ -177,9 +294,9 @@
     }
   },
   "Anuradha_Bhasin_vs_Union_Of_India_on_10_January_2020.PDF": {
-    "start_idx": 1501,
-    "end_idx": 1647,
-    "num_chunks": 146,
+    "start_idx": 2943,
+    "end_idx": 3121,
+    "num_chunks": 178,
     "metadata": {
       "filename": "Anuradha_Bhasin_vs_Union_Of_India_on_10_January_2020.PDF",
       "file_size": 180711,
@@ -339,19 +456,16 @@
         ]
       },
       "citation_count": {
+        "total": 137,
         "case_names": 47,
         "ipc_sections": 0,
         "crpc_sections": 1,
-        "cpc_sections": 0,
         "articles": 10,
-        "acts": 7,
-        "year_citations": 35,
-        "air_citations": 7,
-        "scc_citations": 30
+        "acts": 7
       },
-      "upload_date": "2026-01-31T15:41:05.661299",
+      "upload_date": "2026-02-01T11:15:22.822334",
       "total_pages": 1,
-      "num_chunks": 146
+      "num_chunks": 178
     }
   }
 }
